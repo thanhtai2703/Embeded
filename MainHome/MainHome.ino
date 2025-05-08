@@ -1,9 +1,13 @@
-#include <Wire.h>              // For I2C communication
-#include <Adafruit_GFX.h>      // Graphics library
-#include <Adafruit_SH110X.h>   // SH1106 OLED display library
-#include <DHT.h>               // DHT sensor library
-#include <Keypad.h>            // Keypad library
-#include <ESP32Servo.h>        // Servo library for ESP32
+#include <Wire.h>              
+#include <Adafruit_GFX.h>     
+#include <Adafruit_SH110X.h>   
+#include <DHT.h>               
+#include <Keypad.h>            
+#include <ESP32Servo.h>        
+#include <WiFi.h>              
+#include <PubSubClient.h>      
+#include <WiFiClientSecure.h>  
+#include <ArduinoJson.h>       
 
 // Pin definitions
 #define DHT_PIN 4              // DHT11 data pin
@@ -13,6 +17,53 @@
 #define SERVO_PIN 13           // Servo motor control pin
 #define MQ135_PIN 34           // MQ135 gas sensor analog pin
 #define BUZZER_PIN 5           // Buzzer pin for gas leak alert
+#define LIGHT_SENSOR_PIN 35    // MH-series light sensor analog pin
+#define LED_PIN 2              // LED pin for night light
+
+// WiFi credentials
+const char* ssid = "ttt";      
+const char* password = "thanhtai111"; 
+
+// MQTT Broker settings
+const char* mqtt_broker = "b5619a98.ala.asia-southeast1.emqxsl.com";  // EMQXCloud  address
+const int mqtt_port = 8883;  // MQTT over TLS/SSL port
+const char* mqtt_username = "thanhtai";
+const char* mqtt_password = "thanhtai";
+const char* client_id = "esp32_smart_home"; // MQTT client ID
+
+// Root CA Certificate
+const char* root_ca = R"EOF(
+-----BEGIN CERTIFICATE-----
+MIIDrzCCApegAwIBAgIQCDvgVpBCRrGhdWrJWZHHSjANBgkqhkiG9w0BAQUFADBh
+MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3
+d3cuZGlnaWNlcnQuY29tMSAwHgYDVQQDExdEaWdpQ2VydCBHbG9iYWwgUm9vdCBD
+QTAeFw0wNjExMTAwMDAwMDBaFw0zMTExMTAwMDAwMDBaMGExCzAJBgNVBAYTAlVT
+MRUwEwYDVQQKEwxEaWdpQ2VydCBJbmMxGTAXBgNVBAsTEHd3dy5kaWdpY2VydC5j
+b20xIDAeBgNVBAMTF0RpZ2lDZXJ0IEdsb2JhbCBSb290IENBMIIBIjANBgkqhkiG
+9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4jvhEXLeqKTTo1eqUKKPC3eQyaKl7hLOllsB
+CSDMAZOnTjC3U/dDxGkAV53ijSLdhwZAAIEJzs4bg7/fzTtxRuLWZscFs3YnFo97
+nh6Vfe63SKMI2tavegw5BmV/Sl0fvBf4q77uKNd0f3p4mVmFaG5cIzJLv07A6Fpt
+43C/dxC//AH2hdmoRBBYMql1GNXRor5H4idq9Joz+EkIYIvUX7Q6hL+hqkpMfT7P
+T19sdl6gSzeRntwi5m3OFBqOasv+zbMUZBfHWymeMr/y7vrTC0LUq7dBMtoM1O/4
+gdW7jVg/tRvoSSiicNoxBN33shbyTApOB6jtSj1etX+jkMOvJwIDAQABo2MwYTAO
+BgNVHQ8BAf8EBAMCAYYwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQUA95QNVbR
+TLtm8KPiGxvDl7I90VUwHwYDVR0jBBgwFoAUA95QNVbRTLtm8KPiGxvDl7I90VUw
+DQYJKoZIhvcNAQEFBQADggEBAMucN6pIExIK+t1EnE9SsPTfrgT1eXkIoyQY/Esr
+hMAtudXH/vTBH1jLuG2cenTnmCmrEbXjcKChzUyImZOMkXDiqw8cvpOp/2PV5Adg
+06O/nVsJ8dWO41P0jmP6P6fbtGbfYmbW0W5BjfIttep3Sp+dWOIrWcBAI+0tKIJF
+PnlUkiaY4IBIqDfv8NZ5YBberOgOzW6sRBc4L0na4UU+Krk2U886UAb3LujEV0ls
+YSEY1QSteDwsOoBrp+uvFRTp2InBuThs4pFsiv9kuXclVzDAGySj4dzp30d8tbQk
+CAUw7C29C79Fv1C5qfPrmAESrciIxpg0X40KPMbp1ZWVbd4=
+-----END CERTIFICATE-----
+)EOF";
+
+// MQTT Topics
+const char* temp_topic = "sensors/temperature/room1";
+const char* humidity_topic = "sensors/humidity/room1";
+const char* gas_topic = "sensors/gas/room1";
+const char* light_topic = "sensors/light/room1";
+// Combined topic for all sensor data
+const char* sensors_topic = "sensors/all/room1";
 
 // Keypad configuration
 #define ROW_NUM 4              // 4 rows
@@ -25,11 +76,8 @@ char keys[ROW_NUM][COL_NUM] = {
   {'7','8','9','C'},
   {'*','0','#','D'}
 };
-
-// Connect keypad ROW0, ROW1, ROW2 and ROW3 to these Arduino pins
-byte rowPins[ROW_NUM] = {32, 33, 25, 26}; // Connect to the row pinouts of the keypad
-// Connect keypad COL0, COL1, COL2 and COL3 to these Arduino pins
-byte colPins[COL_NUM] = {27, 14, 12, 15}; // Connect to the column pinouts of the keypad
+byte rowPins[ROW_NUM] = {32, 33, 25, 26};
+byte colPins[COL_NUM] = {27, 14, 12, 15};
 
 // Initialize the OLED display
 Adafruit_SH1106G display = Adafruit_SH1106G(128, 64, &Wire, OLED_RESET);
@@ -43,20 +91,32 @@ Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROW_NUM, COL_NUM);
 // Initialize the servo
 Servo doorServo;
 
+// Initialize WiFi client with SSL/TLS support
+WiFiClientSecure espClient;
+
+// Initialize MQTT client
+PubSubClient mqtt_client(espClient);
+
 // Variables to store sensor readings
 float temperature = 0.0;
 float humidity = 0.0;
 int gasValue = 0;              // Variable to store gas sensor reading
+int lightValue = 0;            // Variable to store light sensor reading
 bool gasLeakDetected = false;  // Flag for gas leak detection
+bool ledOn = false;            // Flag for LED state
 enum GasAlertLevel {
   NORMAL,
   WARNING,
   DANGER
 };
 GasAlertLevel gasAlertLevel = NORMAL;  // Current gas alert level
+
 // Gas sensor thresholds for different alert levels
 #define GAS_WARNING_THRESHOLD 1000  // Lower threshold for initial warning
 #define GAS_DANGER_THRESHOLD 1500   // Higher threshold for danger alarm
+
+// Light sensor threshold for LED control
+#define LIGHT_THRESHOLD 3000    // Threshold for MH-series sensor (adjust as needed)
 
 // Password variables
 const char correctPassword[5] = "1234"; // 4-digit password + null terminator
@@ -70,6 +130,14 @@ const unsigned long updateInterval = 2000; // Update every 2 seconds
 unsigned long doorCloseTime = 0;
 const unsigned long doorOpenDuration = 5000; // Door stays open for 5 seconds
 
+// MQTT timing variables
+unsigned long lastPublishTime = 0;
+const unsigned long publishInterval = 10000; // Publish to MQTT every 10 seconds
+
+// WiFi connection status
+bool wifiConnected = false;
+bool mqttConnected = false;
+
 void checkPassword();
 void resetPassword();
 void updatePasswordDisplay();
@@ -77,14 +145,125 @@ void closeDoor();
 void openDoor();
 void readDHTSensor();
 void readGasSensor();
+void readLightSensor();
 void updateDisplay();
 void displayPasswordError();
 void handleGasLeak();
+void handleLightControl();
+
+// MQTT and WiFi functions
+void setup_wifi();
+void reconnect_mqtt();
+void publishSensorData();
+
+// Function to set up WiFi connection
+void setup_wifi() {
+  delay(10);
+  Serial.println();
+  Serial.print("Connecting to WiFi: ");
+  Serial.println(ssid);
+
+  WiFi.begin(ssid, password);
+
+  int attempt = 0;
+  while (WiFi.status() != WL_CONNECTED && attempt < 20) {
+    delay(500);
+    Serial.print(".");
+    attempt++;
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    wifiConnected = true;
+    Serial.println("");
+    Serial.println("WiFi connected");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    wifiConnected = false;
+    Serial.println("");
+    Serial.println("WiFi connection failed! Operating in offline mode.");
+  }
+}
+
+// Function to reconnect to MQTT broker
+void reconnect_mqtt() {
+  // Loop until we're reconnected or max retries reached
+  int retry_count = 0;
+  while (!mqtt_client.connected() && retry_count < 3 && wifiConnected) {
+    Serial.print("Attempting secure MQTT connection to ");
+    Serial.print(mqtt_broker);
+    Serial.print(":");
+    Serial.print(mqtt_port);
+    Serial.println("...");
+    
+    // Attempt to connect with client ID, username and password
+    if (mqtt_client.connect(client_id, mqtt_username, mqtt_password)) {
+      Serial.println("Connected to EMQX Cloud successfully");
+      mqttConnected = true;
+    } else {
+      retry_count++;
+      Serial.print("Failed to connect, rc=");
+      Serial.print(mqtt_client.state());
+      Serial.println(" Retrying in 5 seconds");
+      delay(5000);
+    }
+  }
+  
+  if (!mqtt_client.connected() && wifiConnected) {
+    mqttConnected = false;
+    Serial.println("Failed to connect to MQTT broker after multiple attempts");
+    Serial.println("Will continue in offline mode and retry later");
+  }
+}
+
+// Function to publish sensor data to MQTT broker
+void publishSensorData() {
+  if (!mqttConnected || !wifiConnected) {
+    return; // Skip if not connected to MQTT or WiFi
+  }
+  
+  // Create a JSON document for the combined data
+  StaticJsonDocument<300> jsonDoc;
+  jsonDoc["temperature"] = temperature;
+  jsonDoc["humidity"] = humidity;
+  jsonDoc["gas_level"] = gasValue;
+  jsonDoc["light_level"] = lightValue;
+  jsonDoc["led_status"] = ledOn ? "ON" : "OFF";
+  jsonDoc["gas_alert"] = gasLeakDetected ? 
+    (gasAlertLevel == DANGER ? "DANGER" : "WARNING") : "NORMAL";
+  jsonDoc["door_status"] = doorOpen ? "OPEN" : "CLOSED";
+  jsonDoc["timestamp"] = millis();
+  
+  // Serialize JSON to a string
+  char jsonBuffer[300];
+  serializeJson(jsonDoc, jsonBuffer);
+  
+  // Publish individual topics
+  char tempStr[10];
+  char humStr[10];
+  char gasStr[10];
+  char lightStr[10];
+  
+  dtostrf(temperature, 1, 2, tempStr);
+  dtostrf(humidity, 1, 2, humStr);
+  dtostrf(gasValue, 1, 0, gasStr);
+  dtostrf(lightValue, 1, 0, lightStr);
+  
+  mqtt_client.publish(temp_topic, tempStr);
+  mqtt_client.publish(humidity_topic, humStr);
+  mqtt_client.publish(gas_topic, gasStr);
+  mqtt_client.publish(light_topic, lightStr);
+  
+  // Publish combined JSON data
+  mqtt_client.publish(sensors_topic, jsonBuffer);
+  
+  Serial.println("Data published to MQTT broker");
+}
 
 void setup() {
   // Initialize serial communication for debugging
   Serial.begin(115200);
-  Serial.println("ESP32 Smart Home - DHT11, OLED SH1106, Keypad, Servo, and Gas Sensor Demo");
+  Serial.println("ESP32 Smart Home - DHT11, OLED SH1106, Keypad, Servo, Gas Sensor, and MQTT Demo");
   
   // Initialize the DHT sensor
   dht.begin();
@@ -115,11 +294,42 @@ void setup() {
   digitalWrite(BUZZER_PIN, HIGH);  // Ensure buzzer is off at startup
   Serial.println("Gas sensor and buzzer initialized");
   
+  // Initialize the light sensor and LED pins
+  pinMode(LIGHT_SENSOR_PIN, INPUT);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);      // Ensure LED is off at startup
+  Serial.println("Light sensor and LED initialized");
+  
+  // Setup WiFi connection
+  setup_wifi();
+  
+  if (wifiConnected) {
+    // Set the root CA certificate for SSL/TLS
+    espClient.setCACert(root_ca);
+    Serial.println("SSL/TLS certificate configured");
+    
+    // Configure MQTT connection
+    mqtt_client.setServer(mqtt_broker, mqtt_port);
+    
+    // Connect to MQTT broker
+    reconnect_mqtt();
+  }
+  
   // Display welcome message
   display.clearDisplay();
   display.setCursor(0, 0);
   display.println("ESP32 Smart Home");
   display.println("System Ready");
+  if (wifiConnected) {
+    display.println("WiFi: Connected");
+    if (mqttConnected) {
+      display.println("MQTT: Connected");
+    } else {
+      display.println("MQTT: Offline");
+    }
+  } else {
+    display.println("WiFi: Offline");
+  }
   display.println("\nEnter Password:");
   display.display();
   Serial.println("System ready");
@@ -175,8 +385,14 @@ void loop() {
     // Read data from MQ135 gas sensor
     readGasSensor();
     
+    // Read data from light sensor
+    readLightSensor();
+    
     // Handle gas leak if detected
     handleGasLeak();
+    
+    // Handle LED control based on light level
+    handleLightControl();
     
     // Only update the display if not in password entry mode
     if (!doorOpen && !passwordIndex) {
@@ -267,6 +483,36 @@ void handleGasLeak() {
       break;
   }
 }
+
+// Function to read light sensor value
+void readLightSensor() {
+  // Read the analog value from MH-series light sensor
+  // MH-series sensors typically output lower values in brighter light
+  lightValue = analogRead(LIGHT_SENSOR_PIN);
+  Serial.print("Light sensor value (MH-series): ");
+  Serial.println(lightValue);
+}
+
+// Function to handle LED control based on light level
+void handleLightControl() {
+  // MH-series sensors typically output higher values in darkness
+  // and lower values in bright light (inverted compared to some LDRs)
+  if (lightValue > LIGHT_THRESHOLD) {
+    if (!ledOn) {
+      digitalWrite(LED_PIN, HIGH);
+      ledOn = true;
+      Serial.println("LED turned ON - low light detected");
+    }
+  } else {
+    // Otherwise, turn off LED
+    if (ledOn) {
+      digitalWrite(LED_PIN, LOW);
+      ledOn = false;
+      Serial.println("LED turned OFF - sufficient light detected");
+    }
+  }
+}
+
 void updateDisplay() {
   // Clear the display
   display.clearDisplay();
@@ -299,27 +545,34 @@ void updateDisplay() {
   display.print("Gas Level:");
   display.setCursor(70, 32);
   display.print(gasValue);
+  
+  // Display light level and night light status
+  display.setCursor(0, 42);
+  display.setTextSize(1);
+  display.print("Light:");
+  display.setCursor(70, 42);
+  display.print(lightValue);
+  display.print(" ");
+  display.print(ledOn ? "LED:ON" : "LED:OFF");
+  
   // Display gas status with different warning levels
-  display.setCursor(0, 45);
+  display.setCursor(0, 52);
   display.setTextSize(1);
   switch (gasAlertLevel) {
     case DANGER:
-      display.setTextSize(2);
-      display.println("GAS LEAK!");
-      display.setTextSize(1);
-      display.println("CRITICAL DANGER!");
+      display.println("GAS LEAK! DANGER!");
       break;
+      
     case WARNING:
-      display.setTextSize(2);
-      display.println("WARNING!");
-      display.setTextSize(1);
-      display.println("Gas level elevated");
+      display.println("WARNING! Gas high");
       break;
+      
     case NORMAL:
     default:
       display.println("Gas Status: Normal");
       break;
   }
+  
   // Update the display
   display.display();
 }
