@@ -2,7 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Switch, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const EnvironmentCard: React.FC<{ title: string; icon: keyof typeof Ionicons.glyphMap; value: string; iconColor: string }> = 
+interface EnvironmentCardProps {
+  title: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  value: string;
+  iconColor: string;
+}
+
+const EnvironmentCard: React.FC<EnvironmentCardProps> = 
   ({ title, icon, value, iconColor }) => (
     <View style={styles.environmentCard}>
       <Ionicons name={icon} size={32} color={iconColor} />
@@ -11,13 +18,15 @@ const EnvironmentCard: React.FC<{ title: string; icon: keyof typeof Ionicons.gly
     </View>
   );
 
-const DeviceRow: React.FC<{ 
-  name: string; 
-  icon: keyof typeof Ionicons.glyphMap; 
+interface DeviceRowProps {
+  name: string;
+  icon: keyof typeof Ionicons.glyphMap;
   isEnabled?: boolean;
   onToggle?: (value: boolean) => void;
   onPress?: () => void;
-}> = ({ name, icon, isEnabled, onToggle, onPress }) => (
+}
+
+const DeviceRow: React.FC<DeviceRowProps> = ({ name, icon, isEnabled, onToggle, onPress }) => (
   <TouchableOpacity 
     style={styles.deviceRow} 
     onPress={onPress}
@@ -103,14 +112,14 @@ const HomeMenu: React.FC = () => {
   });
 
   const toggleDevice = (device: keyof typeof devices) => {
-    setDevices(prev => ({
+    setDevices((prev: typeof devices) => ({
       ...prev,
       [device]: !prev[device],
     }));
   };
 
   const toggleSecurity = (item: keyof typeof security) => {
-    setSecurity(prev => ({
+    setSecurity((prev: typeof security) => ({
       ...prev,
       [item]: !prev[item],
     }));
