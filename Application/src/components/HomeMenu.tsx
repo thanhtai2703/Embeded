@@ -125,9 +125,6 @@ const HomeMenu: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>HOME</Text>
-        <TouchableOpacity style={styles.settingsButton}>
-          <Ionicons name="settings-outline" size={24} color="#333" />
-        </TouchableOpacity>
       </View>
       <ScrollView 
         style={styles.scrollView}
@@ -220,12 +217,12 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   headerTitle: {
+    flex: 1,
+    marginTop: 20,
+    textAlign: 'center',
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
-  },
-  settingsButton: {
-    padding: 8,
   },
   environmentSection: {
     padding: 20,
