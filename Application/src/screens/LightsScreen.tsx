@@ -1,0 +1,124 @@
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Switch } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/AppNavigator';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+const LightsScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
+  const [lights, setLights] = useState({
+    livingRoom: false,
+    bedroom: false,
+  });
+
+  const toggleLight = (light: keyof typeof lights) => {
+    setLights(prev => ({
+      ...prev,
+      [light]: !prev[light],
+    }));
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Lights</Text>
+      </View>
+      <View style={styles.content}>
+        <View style={styles.lightsList}>
+          <View style={styles.lightRow}>
+            <View style={styles.lightInfo}>
+              <Ionicons name="bulb" size={24} color="#333" />
+              <Text style={styles.lightName}>Living Room Light</Text>
+            </View>
+            <Switch
+              value={lights.livingRoom}
+              onValueChange={() => toggleLight('livingRoom')}
+              trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
+              thumbColor="#fff"
+            />
+          </View>
+          <View style={styles.lightRow}>
+            <View style={styles.lightInfo}>
+              <Ionicons name="bulb" size={24} color="#333" />
+              <Text style={styles.lightName}>Bedroom Light</Text>
+            </View>
+            <Switch
+              value={lights.bedroom}
+              onValueChange={() => toggleLight('bedroom')}
+              trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  backButton: {
+    marginRight: 15,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  content: {
+    padding: 20,
+  },
+  lightsList: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  lightRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    height: 70,
+  },
+  lightInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  lightName: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+});
+
+export default LightsScreen; 

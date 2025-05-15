@@ -2,49 +2,66 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Switch, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import mqttService from '../services/MQTTService';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/AppNavigator';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface EnvironmentCardProps {
   title: string;
   icon: keyof typeof Ionicons.glyphMap;
   value: string;
   iconColor: string;
+  onPress?: () => void;
 }
 
 const EnvironmentCard: React.FC<EnvironmentCardProps> = 
-  ({ title, icon, value, iconColor }) => (
-    <View style={styles.environmentCard}>
+  ({ title, icon, value, iconColor, onPress }) => (
+    <TouchableOpacity 
+      style={styles.environmentCard} 
+      onPress={onPress}
+      disabled={!onPress}
+    >
       <Ionicons name={icon} size={32} color={iconColor} />
       <Text style={styles.environmentValue}>{value}</Text>
       <Text style={styles.environmentTitle}>{title}</Text>
-    </View>
+    </TouchableOpacity>
   );
 
 interface DeviceRowProps {
   name: string;
   icon: keyof typeof Ionicons.glyphMap;
+  iconColor: string;
   isEnabled?: boolean;
   onToggle?: (value: boolean) => void;
   onPress?: () => void;
+  showArrow?: boolean;
 }
 
-const DeviceRow: React.FC<DeviceRowProps> = ({ name, icon, isEnabled, onToggle, onPress }) => (
+const DeviceRow: React.FC<DeviceRowProps> = ({ name, icon, iconColor, isEnabled, onToggle, onPress, showArrow }) => (
   <TouchableOpacity 
     style={styles.deviceRow} 
     onPress={onPress}
     disabled={!onPress}
   >
     <View style={styles.deviceInfo}>
-      <Ionicons name={icon} size={24} color="#333" />
+      <Ionicons name={icon} size={24} color={iconColor} />
       <Text style={styles.deviceName}>{name}</Text>
     </View>
-    {onToggle && (
-      <Switch
-        value={isEnabled}
-        onValueChange={onToggle}
-        trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
-        thumbColor="#fff"
-      />
-    )}
+    <View style={styles.deviceControls}>
+      {onToggle && (
+        <Switch
+          value={isEnabled}
+          onValueChange={onToggle}
+          trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
+          thumbColor="#fff"
+        />
+      )}
+      {showArrow && (
+        <Ionicons name="chevron-forward" size={24} color="#666" />
+      )}
+    </View>
   </TouchableOpacity>
 );
 
@@ -85,25 +102,25 @@ const BottomNav: React.FC = () => {
 
       <TouchableOpacity 
         style={styles.navItem} 
-        onPress={() => setActiveTab('profile')}
+        onPress={() => setActiveTab('settings')}
       >
         <Ionicons 
-          name="person" 
+          name="settings" 
           size={24} 
-          color={activeTab === 'profile' ? '#007AFF' : '#666'} 
+          color={activeTab === 'settings' ? '#007AFF' : '#666'} 
         />
         <Text style={[
           styles.navText,
-          activeTab === 'profile' && styles.activeNavText
-        ]}>Profile</Text>
+          activeTab === 'settings' && styles.activeNavText
+        ]}>Settings</Text>
       </TouchableOpacity>
     </View>
   );
 };
 
 const HomeMenu: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
   const [devices, setDevices] = useState({
-    fan: false,
     garage: false,
     mainDoor: false,
   });
@@ -135,8 +152,15 @@ const HomeMenu: React.FC = () => {
   };
 
   const handleLightPress = () => {
-    // Navigation logic will be added here
-    console.log('Navigate to Light screen');
+    navigation.navigate('Lights');
+  };
+
+  const handleTemperaturePress = () => {
+    navigation.navigate('TemperatureDetails');
+  };
+
+  const handleHumidityPress = () => {
+    navigation.navigate('HumidityDetails');
   };
 
   // Connect to MQTT and handle sensor data
@@ -192,12 +216,14 @@ const HomeMenu: React.FC = () => {
                 icon="thermometer"
                 value={sensorData.temperature}
                 iconColor="#FF3B30"
+                onPress={handleTemperaturePress}
               />
               <EnvironmentCard
                 title="Humidity"
                 icon="water"
                 value={sensorData.humidity}
                 iconColor="#007AFF"
+                onPress={handleHumidityPress}
               />
             </View>
           </View>
@@ -207,23 +233,21 @@ const HomeMenu: React.FC = () => {
               <DeviceRow
                 name="Light"
                 icon="bulb"
+                iconColor="#FFD700"
                 onPress={handleLightPress}
-              />
-              <DeviceRow
-                name="Fan"
-                icon="refresh"
-                isEnabled={devices.fan}
-                onToggle={() => toggleDevice('fan')}
+                showArrow={true}
               />
               <DeviceRow
                 name="Garage"
                 icon="car"
+                iconColor="#4CAF50"
                 isEnabled={devices.garage}
                 onToggle={() => toggleDevice('garage')}
               />
               <DeviceRow
                 name="Main door"
                 icon="home"
+                iconColor="#2196F3"
                 isEnabled={devices.mainDoor}
                 onToggle={() => toggleDevice('mainDoor')}
               />
@@ -235,6 +259,7 @@ const HomeMenu: React.FC = () => {
               <DeviceRow
                 name="Alarm System"
                 icon="shield"
+                iconColor="#FF3B30"
                 isEnabled={security.alarm}
                 onToggle={() => toggleSecurity('alarm')}
               />
@@ -350,6 +375,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    height: 70,
   },
   deviceInfo: {
     flexDirection: 'row',
@@ -384,6 +410,11 @@ const styles = StyleSheet.create({
   },
   activeNavText: {
     color: '#007AFF',
+  },
+  deviceControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
 });
 
