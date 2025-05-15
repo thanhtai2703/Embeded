@@ -801,8 +801,11 @@ void handleSecuritySystem() {
       personDetected = false;
       Serial.println("Person no longer detected");
       
-      // Don't stop the alarm automatically when person leaves
-      // The alarm will continue until manually stopped
+      // Stop the alarm automatically when person moves away
+      if (securityAlarmActive) {
+        Serial.println("Person moved away - stopping security alarm");
+        stopSecurityAlarm();
+      }
     }
   }
 }

@@ -5,13 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="eff8395f-113b-47ef-b211-07a9bcf0f366" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../Application/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../Application/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Application/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../Application/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Application/src/components/HomeMenu.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../Application/src/components/HomeMenu.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../MainHome/MainHome.ino" beforeDir="false" afterPath="$PROJECT_DIR$/../MainHome/MainHome.ino" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/emqx_to_influxdb.py" beforeDir="false" afterPath="$PROJECT_DIR$/emqx_to_influxdb.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -63,7 +57,7 @@
       <updated>1747230064740</updated>
       <workItem from="1747230065862" duration="148000" />
       <workItem from="1747290737141" duration="143000" />
-      <workItem from="1747307255489" duration="2475000" />
+      <workItem from="1747307255489" duration="3246000" />
     </task>
     <servers />
   </component>
@@ -71,6 +65,6 @@
     <option name="version" value="3" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/Python$emqx_to_influxdb.coverage" NAME="emqx_to_influxdb Coverage Results" MODIFIED="1747307306672" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Python$emqx_to_influxdb.coverage" NAME="emqx_to_influxdb Coverage Results" MODIFIED="1747311904510" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
