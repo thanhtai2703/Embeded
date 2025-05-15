@@ -20,6 +20,11 @@
 #define LIGHT_SENSOR_PIN 35    // MH-series light sensor analog pin
 #define LED_PIN 2              // LED pin for night light
 
+// Security system pins
+#define SECURITY_BUZZER_PIN 19 // Additional buzzer for security alert
+#define TRIG_PIN 17            // HC-SR04 trigger pin
+#define ECHO_PIN 18            // HC-SR04 echo pin
+
 // WiFi credentials
 const char* ssid = "ttt";         // Replace with your WiFi SSID
 const char* password = "thanhtai111"; // Replace with your WiFi password
@@ -62,6 +67,7 @@ const char* temp_topic = "sensors/temperature/room1";
 const char* humidity_topic = "sensors/humidity/room1";
 const char* gas_topic = "sensors/gas/room1";
 const char* light_topic = "sensors/light/room1";
+const char* security_topic = "sensors/security/room1"; // New topic for security status
 // Combined topic for all sensor data
 const char* sensors_topic = "sensors/all/room1";
 
@@ -114,6 +120,14 @@ enum GasAlertLevel {
 };
 GasAlertLevel gasAlertLevel = NORMAL;  // Current gas alert level
 
+// Security system variables
+float distance = 0.0;          // Distance measured by ultrasonic sensor
+bool securityModeEnabled = false; // Flag for security mode status
+bool personDetected = false;   // Flag for person detection
+bool securityAlarmActive = false; // Flag for security alarm status
+unsigned long personDetectionTime = 0; // Time when person was first detected
+const unsigned long PERSON_DETECTION_THRESHOLD = 5000; // 5 seconds threshold for security alarm
+
 // Gas sensor thresholds for different alert levels
 #define GAS_WARNING_THRESHOLD 1000  // Lower threshold for initial warning
 #define GAS_DANGER_THRESHOLD 1500   // Higher threshold for danger alarm
@@ -135,7 +149,7 @@ const unsigned long doorOpenDuration = 5000; // Door stays open for 5 seconds
 
 // MQTT timing variables
 unsigned long lastPublishTime = 0;
-const unsigned long publishInterval = 10000; // Publish to MQTT every 10 seconds
+const unsigned long publishInterval = 5000; // Publish to MQTT every 10 seconds
 
 // WiFi connection status
 bool wifiConnected = false;
@@ -153,6 +167,13 @@ void updateDisplay();
 void displayPasswordError();
 void handleGasLeak();
 void handleLightControl();
+
+// Security system functions
+void readUltrasonicSensor();
+void handleSecuritySystem();
+void toggleSecurityMode();
+void triggerSecurityAlarm();
+void stopSecurityAlarm();
 
 // MQTT and WiFi functions
 void setup_wifi();
@@ -226,7 +247,7 @@ void publishSensorData() {
   }
 
   // Create a JSON document for the combined data
-  StaticJsonDocument<300> jsonDoc;
+  StaticJsonDocument<400> jsonDoc;
   jsonDoc["temperature"] = temperature;
   jsonDoc["humidity"] = humidity;
   jsonDoc["gas_level"] = gasValue;
@@ -235,10 +256,13 @@ void publishSensorData() {
   jsonDoc["gas_alert"] = gasLeakDetected ?
     (gasAlertLevel == DANGER ? "DANGER" : "WARNING") : "NORMAL";
   jsonDoc["door_status"] = doorOpen ? "OPEN" : "CLOSED";
+  jsonDoc["security_mode"] = securityModeEnabled ? "ON" : "OFF";
+  jsonDoc["security_alarm"] = securityAlarmActive ? "ON" : "OFF";
+  jsonDoc["distance"] = distance;
   jsonDoc["timestamp"] = millis();
 
   // Serialize JSON to a string
-  char jsonBuffer[300];
+  char jsonBuffer[400];
   serializeJson(jsonDoc, jsonBuffer);
 
   // Publish individual topics
@@ -246,16 +270,19 @@ void publishSensorData() {
   char humStr[10];
   char gasStr[10];
   char lightStr[10];
+  char securityStr[10];
 
   dtostrf(temperature, 1, 2, tempStr);
   dtostrf(humidity, 1, 2, humStr);
   dtostrf(gasValue, 1, 0, gasStr);
   dtostrf(lightValue, 1, 0, lightStr);
+  sprintf(securityStr, "%s", securityAlarmActive ? "ALARM" : (securityModeEnabled ? "ON" : "OFF"));
 
   mqtt_client.publish(temp_topic, tempStr);
   mqtt_client.publish(humidity_topic, humStr);
   mqtt_client.publish(gas_topic, gasStr);
   mqtt_client.publish(light_topic, lightStr);
+  mqtt_client.publish(security_topic, securityStr);
 
   // Publish combined JSON data
   mqtt_client.publish(sensors_topic, jsonBuffer);
@@ -300,6 +327,13 @@ void setup() {
   digitalWrite(LED_PIN, LOW);      // Ensure LED is off at startup
   Serial.println("Light sensor and LED initialized");
 
+  // Initialize the HC-SR04 ultrasonic sensor and security buzzer pins
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  pinMode(SECURITY_BUZZER_PIN, OUTPUT);
+  digitalWrite(SECURITY_BUZZER_PIN, HIGH); // Ensure security buzzer is off at startup
+  Serial.println("Ultrasonic sensor and security buzzer initialized");
+
   // Setup WiFi connection
   setup_wifi();
 
@@ -323,6 +357,7 @@ void setup() {
 }
 
 void loop() {
+  mqtt_client.loop();
   // Check if it's time to update the readings
   unsigned long currentTime = millis();
 
@@ -344,6 +379,27 @@ void loop() {
       else if (key == '*') {
         // * is the clear key
         resetPassword();
+      }
+      else if (key == 'D') {
+        // D is used to toggle security mode
+        toggleSecurityMode();
+        
+        // Show security mode status on display
+        display.clearDisplay();
+        display.setTextSize(1);
+        display.setCursor(0, 0);
+        display.println("ESP32 Smart Home");
+        display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
+        
+        display.setCursor(0, 25);
+        display.setTextSize(2);
+        display.println("SECURITY");
+        display.println(securityModeEnabled ? "ENABLED" : "DISABLED");
+        display.display();
+        delay(2000); // Show message for 2 seconds
+        
+        // Return to normal display
+        updateDisplay();
       }
       else if (passwordIndex < 4) {
         // Add digit to password
@@ -374,17 +430,33 @@ void loop() {
 
     // Read data from light sensor
     readLightSensor();
+    
+    // Read data from ultrasonic sensor
+    readUltrasonicSensor();
 
     // Handle gas leak if detected
     handleGasLeak();
 
     // Handle LED control based on light level
     handleLightControl();
+    
+    // Handle security system if enabled
+    if (securityModeEnabled) {
+      handleSecuritySystem();
+    }
 
     // Only update the display if not in password entry mode
     if (!doorOpen && !passwordIndex) {
       updateDisplay();
     }
+  }
+  
+  // Check if it's time to publish data to MQTT
+  if (currentTime - lastPublishTime >= publishInterval) {
+    lastPublishTime = currentTime;
+    
+    // Publish sensor data to MQTT broker
+    publishSensorData();
   }
 }
 
@@ -546,7 +618,7 @@ void updateDisplay() {
   // display.print(ledOn ? "LED:ON" : "LED:OFF");
 
   // Display gas status with different warning levels
-  display.setCursor(0, 52);
+  display.setCursor(0, 42);
   display.setTextSize(1);
   switch (gasAlertLevel) {
     case DANGER:
@@ -561,6 +633,16 @@ void updateDisplay() {
     default:
       display.println("Gas Status: Normal");
       break;
+  }
+  
+  // Display security mode status
+  display.setCursor(0, 52);
+  display.setTextSize(1);
+  if (securityAlarmActive) {
+    display.println("SECURITY ALARM!");
+  } else {
+    display.print("Security: ");
+    display.println(securityModeEnabled ? "ON" : "OFF");
   }
 
   // Update the display
@@ -663,4 +745,98 @@ void closeDoor() {
   resetPassword();
 
   Serial.println("Door closed");
+}
+
+// Function to read distance from HC-SR04 ultrasonic sensor
+void readUltrasonicSensor() {
+  // Clear the trigger pin
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  
+  // Set the trigger pin HIGH for 10 microseconds
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  
+  // Read the echo pin, convert the time to distance in cm
+  // Sound travels at approximately 343 meters per second (or 0.0343 cm/microsecond)
+  // The pulse travels to the object and back, so we divide by 2
+  long duration = pulseIn(ECHO_PIN, HIGH);
+  distance = duration * 0.0343 / 2;
+  
+  // Ignore obviously invalid readings
+  if (distance > 400 || distance < 2) {
+    Serial.println("Invalid distance reading, ignoring");
+    return; // Keep previous distance value
+  }
+  
+  Serial.print("Distance: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+}
+
+// Function to handle security system
+void handleSecuritySystem() {
+  // Define the distance threshold for person detection (adjust as needed)
+  const float PERSON_DISTANCE_THRESHOLD = 100.0; // cm
+  
+  // Check if a person is detected (distance less than threshold)
+  if (distance < PERSON_DISTANCE_THRESHOLD) {
+    if (!personDetected) {
+      // First time detecting a person
+      personDetected = true;
+      personDetectionTime = millis();
+      Serial.println("Person detected at door, starting timer");
+    } else {
+      // Person has been detected before, check if they've been there for 5 seconds
+      unsigned long currentTime = millis();
+      if (!securityAlarmActive && (currentTime - personDetectionTime >= PERSON_DETECTION_THRESHOLD)) {
+        // Person has been at the door for 5 seconds, trigger alarm
+        triggerSecurityAlarm();
+      }
+    }
+  } else {
+    // No person detected, reset detection flag and timer
+    if (personDetected) {
+      personDetected = false;
+      Serial.println("Person no longer detected");
+      
+      // Don't stop the alarm automatically when person leaves
+      // The alarm will continue until manually stopped
+    }
+  }
+}
+
+// Function to toggle security mode on/off
+void toggleSecurityMode() {
+  securityModeEnabled = !securityModeEnabled;
+  
+  if (securityModeEnabled) {
+    Serial.println("Security mode enabled");
+    // Reset any active alarms when enabling security mode
+    if (securityAlarmActive) {
+      stopSecurityAlarm();
+    }
+  } else {
+    Serial.println("Security mode disabled");
+    // Stop any active alarms when disabling security mode
+    if (securityAlarmActive) {
+      stopSecurityAlarm();
+    }
+  }
+}
+
+// Function to trigger security alarm
+void triggerSecurityAlarm() {
+  securityAlarmActive = true;
+  Serial.println("SECURITY ALARM TRIGGERED!");
+  // Buzzer will be controlled in the main loop
+  digitalWrite(SECURITY_BUZZER_PIN, LOW); // Turn on security buzzer
+}
+
+// Function to stop security alarm
+void stopSecurityAlarm() {
+  securityAlarmActive = false;
+  Serial.println("Security alarm stopped");
+  digitalWrite(SECURITY_BUZZER_PIN, HIGH); // Turn off security buzzer
 }

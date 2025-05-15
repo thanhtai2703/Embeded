@@ -35,7 +35,7 @@ class Config:
     MQTT_USERNAME = os.getenv("MQTT_USERNAME", "thanhtai")
     MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "thanhtai")
     MQTT_CLIENT_ID = os.getenv("MQTT_CLIENT_ID", f"python-mqtt-{int(time.time())}")
-    MQTT_TOPIC = os.getenv("MQTT_TOPIC", "sensors/dht11/room1")
+    MQTT_TOPIC = os.getenv("MQTT_TOPIC", "sensors/all/room1")
     MQTT_QOS = int(os.getenv("MQTT_QOS", 0))
     MQTT_CA_CERT = os.getenv("MQTT_CA_CERT", "C:\\Users\\taith\\Downloads\\emqxsl-ca.crt")
 

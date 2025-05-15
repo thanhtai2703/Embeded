@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Switch, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Switch, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import mqttService from '../services/MQTTService';
 
 interface EnvironmentCardProps {
   title: string;
@@ -101,14 +102,22 @@ const BottomNav: React.FC = () => {
 };
 
 const HomeMenu: React.FC = () => {
-  const [devices, setDevices] = React.useState({
+  const [devices, setDevices] = useState({
     fan: false,
     garage: false,
     mainDoor: false,
   });
 
-  const [security, setSecurity] = React.useState({
+  const [security, setSecurity] = useState({
     alarm: false,
+  });
+  
+  // State for sensor data
+  const [sensorData, setSensorData] = useState({
+    temperature: '-- °C',
+    humidity: '-- %',
+    isConnected: false,
+    isLoading: true
   });
 
   const toggleDevice = (device: keyof typeof devices) => {
@@ -130,6 +139,41 @@ const HomeMenu: React.FC = () => {
     console.log('Navigate to Light screen');
   };
 
+  // Connect to MQTT and handle sensor data
+  useEffect(() => {
+    const connectToMQTT = async () => {
+      try {
+        setSensorData(prev => ({ ...prev, isLoading: true }));
+        const connected = await mqttService.connect();
+        setSensorData(prev => ({ ...prev, isConnected: connected }));
+        
+        // Handle incoming MQTT messages
+        mqttService.onMessage((message) => {
+          console.log('Received MQTT message:', message);
+          
+          if (message.temperature !== undefined && message.humidity !== undefined) {
+            setSensorData(prev => ({
+              ...prev,
+              temperature: `${message.temperature.toFixed(1)} °C`,
+              humidity: `${message.humidity.toFixed(1)} %`,
+              isLoading: false
+            }));
+          }
+        });
+      } catch (error) {
+        console.error('Failed to connect to MQTT:', error);
+        setSensorData(prev => ({ ...prev, isConnected: false, isLoading: false }));
+      }
+    };
+
+    connectToMQTT();
+
+    // Cleanup function
+    return () => {
+      mqttService.disconnect();
+    };
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -144,18 +188,27 @@ const HomeMenu: React.FC = () => {
           <View style={styles.environmentSection}>
             <Text style={styles.sectionTitle}>ENVIRONMENT</Text>
             <View style={styles.environmentCards}>
-              <EnvironmentCard
-                title="Temperature"
-                icon="thermometer"
-                value="23°C"
-                iconColor="#FF3B30"
-              />
-              <EnvironmentCard
-                title="Humidity"
-                icon="water"
-                value="45%"
-                iconColor="#007AFF"
-              />
+              {sensorData.isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#007AFF" />
+                  <Text style={styles.loadingText}>Connecting to sensors...</Text>
+                </View>
+              ) : (
+                <>
+                  <EnvironmentCard
+                    title="Temperature"
+                    icon="thermometer"
+                    value={sensorData.temperature}
+                    iconColor="#FF3B30"
+                  />
+                  <EnvironmentCard
+                    title="Humidity"
+                    icon="water"
+                    value={sensorData.humidity}
+                    iconColor="#007AFF"
+                  />
+                </>
+              )}
             </View>
           </View>
           <View style={styles.devicesSection}>
@@ -205,6 +258,18 @@ const HomeMenu: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    width: '100%',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
@@ -332,4 +397,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeMenu; 
+export default HomeMenu;
