@@ -114,8 +114,8 @@ const HomeMenu: React.FC = () => {
   
   // State for sensor data
   const [sensorData, setSensorData] = useState({
-    temperature: '-- °C',
-    humidity: '-- %',
+    temperature: 'No data',
+    humidity: 'No data',
     isConnected: false,
     isLoading: true
   });
@@ -143,7 +143,6 @@ const HomeMenu: React.FC = () => {
   useEffect(() => {
     const connectToMQTT = async () => {
       try {
-        setSensorData(prev => ({ ...prev, isLoading: true }));
         const connected = await mqttService.connect();
         setSensorData(prev => ({ ...prev, isConnected: connected }));
         
@@ -188,27 +187,18 @@ const HomeMenu: React.FC = () => {
           <View style={styles.environmentSection}>
             <Text style={styles.sectionTitle}>ENVIRONMENT</Text>
             <View style={styles.environmentCards}>
-              {sensorData.isLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#007AFF" />
-                  <Text style={styles.loadingText}>Connecting to sensors...</Text>
-                </View>
-              ) : (
-                <>
-                  <EnvironmentCard
-                    title="Temperature"
-                    icon="thermometer"
-                    value={sensorData.temperature}
-                    iconColor="#FF3B30"
-                  />
-                  <EnvironmentCard
-                    title="Humidity"
-                    icon="water"
-                    value={sensorData.humidity}
-                    iconColor="#007AFF"
-                  />
-                </>
-              )}
+              <EnvironmentCard
+                title="Temperature"
+                icon="thermometer"
+                value={sensorData.temperature}
+                iconColor="#FF3B30"
+              />
+              <EnvironmentCard
+                title="Humidity"
+                icon="water"
+                value={sensorData.humidity}
+                iconColor="#007AFF"
+              />
             </View>
           </View>
           <View style={styles.devicesSection}>
