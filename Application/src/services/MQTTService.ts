@@ -16,6 +16,8 @@ const MQTT_TOPIC_HUMIDITY = 'sensors/humidity/room1';
 // Control topics
 const MQTT_TOPIC_SECURITY_CONTROL = 'control/security/room1';
 const MQTT_TOPIC_GARAGE_LIGHT_CONTROL = 'control/garage/light';
+const MQTT_TOPIC_GARAGE_LIVING_ROOM_LIGHT = 'control/garage/livingroom';
+const MQTT_TOPIC_GARAGE_BEDROOM_LIGHT = 'control/garage/bedroom';
 
 type MQTTMessage = {
   temperature?: number;
@@ -161,6 +163,30 @@ class MQTTService {
     const message = enabled ? 'ON' : 'OFF';
     this.client.publish(MQTT_TOPIC_GARAGE_LIGHT_CONTROL, message, { qos: 1 });
     console.log(`Published auto light control message: ${message}`);
+  }
+
+  // Function to publish living room light control message
+  publishLivingRoomLightControl(enabled: boolean): void {
+    if (!this.client || !this.isConnected) {
+      console.warn('Cannot publish: MQTT client not connected');
+      return;
+    }
+    
+    const message = enabled ? 'ON' : 'OFF';
+    this.client.publish(MQTT_TOPIC_GARAGE_LIVING_ROOM_LIGHT, message, { qos: 1 });
+    console.log(`Published living room light control message: ${message}`);
+  }
+
+  // Function to publish bedroom light control message
+  publishBedroomLightControl(enabled: boolean): void {
+    if (!this.client || !this.isConnected) {
+      console.warn('Cannot publish: MQTT client not connected');
+      return;
+    }
+    
+    const message = enabled ? 'ON' : 'OFF';
+    this.client.publish(MQTT_TOPIC_GARAGE_BEDROOM_LIGHT, message, { qos: 1 });
+    console.log(`Published bedroom light control message: ${message}`);
   }
 }
 

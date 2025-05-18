@@ -19,6 +19,8 @@
 #define LIGHT_SENSOR_PIN 35    // MH-series light sensor analog pin
 #define LED_PIN 2              // LED pin for night light
 #define LED_PIN2 14            // Second LED pin for night light
+#define LIVING_ROOM_LED_PIN 32 // LED pin for living room light
+#define BEDROOM_LED_PIN 33     // LED pin for bedroom light
 
 // Constants
 #define DISTANCE_THRESHOLD 30  // Distance threshold in cm to trigger door opening
@@ -68,6 +70,8 @@ const char* temp_topic = "sensors/temperature/garage";
 const char* humidity_topic = "sensors/humidity/garage";
 const char* dht_topic = "sensors/dht11/garage";
 const char* light_control_topic = "control/garage/light"; // Topic for receiving light control commands
+const char* living_room_light_topic = "control/garage/livingroom"; // Topic for controlling living room LED
+const char* bedroom_light_topic = "control/garage/bedroom"; // Topic for controlling bedroom LED
 
 // Initialize the OLED display
 Adafruit_SH1106G display = Adafruit_SH1106G(128, 64, &Wire, OLED_RESET);
@@ -93,6 +97,8 @@ float humidity = 0.0;          // Humidity from DHT11
 int lightValue = 0;            // Light sensor reading
 bool ledOn = false;            // LED state
 bool led2On = false;           // Second LED state
+bool livingRoomLedOn = false;  // Living room LED state
+bool bedroomLedOn = false;     // Bedroom LED state
 bool autoLightEnabled = false;  // Auto light control enabled by default
 unsigned long doorOpenTime = 0; // Time when door was opened
 unsigned long lastDistanceCheckTime = 0; // Last time distance was checked
@@ -150,8 +156,12 @@ void setup() {
   pinMode(LIGHT_SENSOR_PIN, INPUT);
   pinMode(LED_PIN, OUTPUT);
   pinMode(LED_PIN2, OUTPUT);
+  pinMode(LIVING_ROOM_LED_PIN, OUTPUT);
+  pinMode(BEDROOM_LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW); // LED off initially
   digitalWrite(LED_PIN2, LOW); // Second LED off initially
+  digitalWrite(LIVING_ROOM_LED_PIN, LOW); // Living room LED off initially
+  digitalWrite(BEDROOM_LED_PIN, LOW); // Bedroom LED off initially
   Serial.println("Light sensor and LEDs initialized");
   
   // Initialize the OLED display
@@ -425,10 +435,14 @@ void reconnect_mqtt() {
       Serial.println("Connected to EMQX Cloud successfully");
       mqttConnected = true;
       
-      // Subscribe to the light control topic
+      // Subscribe to the light control topics
       mqtt_client.subscribe(light_control_topic);
-      Serial.print("Subscribed to topic: ");
+      mqtt_client.subscribe(living_room_light_topic);
+      mqtt_client.subscribe(bedroom_light_topic);
+      Serial.print("Subscribed to topics: ");
       Serial.println(light_control_topic);
+      Serial.println(living_room_light_topic);
+      Serial.println(bedroom_light_topic);
     } else {
       retry_count++;
       Serial.print("Failed to connect, rc=");
@@ -549,6 +563,30 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       Serial.println("LEDs turned OFF due to auto light being disabled");
     }
   }
+  // Handle living room light control topic
+  else if (String(topic) == living_room_light_topic) {
+    if (message == "ON") {
+      digitalWrite(LIVING_ROOM_LED_PIN, HIGH);
+      livingRoomLedOn = true;
+      Serial.println("Living room light turned ON");
+    } else if (message == "OFF") {
+      digitalWrite(LIVING_ROOM_LED_PIN, LOW);
+      livingRoomLedOn = false;
+      Serial.println("Living room light turned OFF");
+    }
+  }
+  // Handle bedroom light control topic
+  else if (String(topic) == bedroom_light_topic) {
+    if (message == "ON") {
+      digitalWrite(BEDROOM_LED_PIN, HIGH);
+      bedroomLedOn = true;
+      Serial.println("Bedroom light turned ON");
+    } else if (message == "OFF") {
+      digitalWrite(BEDROOM_LED_PIN, LOW);
+      bedroomLedOn = false;
+      Serial.println("Bedroom light turned OFF");
+    }
+  }
 }
 
 // Function to publish light sensor data to MQTT broker
@@ -560,10 +598,12 @@ void publishLightData() {
   }
   
   // Create a JSON document for the light data
-  StaticJsonDocument<100> jsonDoc;
+  StaticJsonDocument<200> jsonDoc;
   jsonDoc["light"] = lightValue;
   jsonDoc["led_status"] = ledOn ? "ON" : "OFF";
   jsonDoc["led2_status"] = led2On ? "ON" : "OFF";
+  jsonDoc["living_room_led"] = livingRoomLedOn ? "ON" : "OFF";
+  jsonDoc["bedroom_led"] = bedroomLedOn ? "ON" : "OFF";
   jsonDoc["auto_light"] = autoLightEnabled ? "ON" : "OFF";
   jsonDoc["timestamp"] = millis();
   
@@ -583,6 +623,8 @@ void updateDisplay() {
   // Check if any values have changed since last update
   // Only update the display if something has changed or it's been a long time
   static bool lastDisplayedAutoLightState = true; // Initialize with default value
+  static bool lastDisplayedLivingRoomLedState = false; // Initialize with default value
+  static bool lastDisplayedBedroomLedState = false; // Initialize with default value
   bool stateChanged = (abs(lastDisplayedDistance - filteredDistance) > 0.5) || 
                       (lastDisplayedDoorState != doorOpen) || 
                       (abs(lastDisplayedTemperature - temperature) > 0.1) || 
@@ -590,6 +632,8 @@ void updateDisplay() {
                       (lastDisplayedLightValue != lightValue) ||
                       (lastDisplayedLedState != ledOn) ||
                       (lastDisplayedLed2State != led2On) ||
+                      (lastDisplayedLivingRoomLedState != livingRoomLedOn) ||
+                      (lastDisplayedBedroomLedState != bedroomLedOn) ||
                       (lastDisplayedAutoLightState != autoLightEnabled);
   
   static unsigned long lastFullUpdateTime = 0;
@@ -605,6 +649,8 @@ void updateDisplay() {
     lastDisplayedLightValue = lightValue;
     lastDisplayedLedState = ledOn;
     lastDisplayedLed2State = led2On;
+    lastDisplayedLivingRoomLedState = livingRoomLedOn;
+    lastDisplayedBedroomLedState = bedroomLedOn;
     lastDisplayedAutoLightState = autoLightEnabled;
     lastFullUpdateTime = currentTime;
     
@@ -652,6 +698,15 @@ void updateDisplay() {
     display.print(ledOn ? "ON" : "OFF");
     display.print(" Auto:");
     display.print(autoLightEnabled ? "ON" : "OFF");
+    
+    // Display living room and bedroom LED status
+    display.setCursor(70, 42);
+    display.print("LR:");
+    display.print(livingRoomLedOn ? "ON" : "OFF");
+    
+    display.setCursor(70, 52);
+    display.print("BR:");
+    display.print(bedroomLedOn ? "ON" : "OFF");
     
     // Update the display
     display.display();

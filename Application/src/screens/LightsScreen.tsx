@@ -18,10 +18,20 @@ const LightsScreen: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false);
 
   const toggleLight = (light: keyof typeof lights) => {
+    const newValue = !lights[light];
     setLights(prev => ({
       ...prev,
-      [light]: !prev[light],
+      [light]: newValue,
     }));
+    
+    // Send MQTT message to control the corresponding LED
+    if (isConnected) {
+      if (light === 'livingRoom') {
+        mqttService.publishLivingRoomLightControl(newValue);
+      } else if (light === 'bedroom') {
+        mqttService.publishBedroomLightControl(newValue);
+      }
+    }
   };
 
   const toggleAutoLight = (value: boolean) => {
