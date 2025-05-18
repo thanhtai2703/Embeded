@@ -1,14 +1,81 @@
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import mqttService from '../services/MQTTService';
+import apiService from '../services/APIService';
+import { LineChart } from 'react-native-chart-kit';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+interface HistoricalData {
+  time: string;
+  value: number;
+}
+
 const HumidityDetails: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const [humidity, setHumidity] = useState<number | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [historyData, setHistoryData] = useState<HistoricalData[]>([]);
+  const [historyLoading, setHistoryLoading] = useState<boolean>(true);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [selectedTimeRange, setSelectedTimeRange] = useState<number>(24); // Default to 24 hours
+  const screenWidth = Dimensions.get('window').width;
+
+  // Fetch historical humidity data
+  const fetchHistoricalData = async (timeRange: number = selectedTimeRange) => {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const data = await apiService.getHumidityHistory(timeRange);
+      setHistoryData(data);
+    } catch (error) {
+      console.error('Error fetching humidity history:', error);
+      setHistoryError('Failed to load humidity history');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // Handle time range selection
+  const handleTimeRangeChange = (hours: number) => {
+    setSelectedTimeRange(hours);
+    fetchHistoricalData(hours);
+  };
+
+  useEffect(() => {
+    // Connect to MQTT if not already connected
+    if (!mqttService.isClientConnected()) {
+      mqttService.connect()
+        .then(() => setLoading(false))
+        .catch(error => {
+          console.error('Failed to connect to MQTT:', error);
+          setLoading(false);
+        });
+    } else {
+      setLoading(false);
+    }
+
+    // Subscribe to MQTT messages
+    const handleMessage = (message: any) => {
+      if (message.humidity !== undefined) {
+        setHumidity(message.humidity);
+      }
+    };
+
+    mqttService.onMessage(handleMessage);
+
+    // Fetch historical data
+    fetchHistoricalData(selectedTimeRange);
+
+    return () => {
+      // No need to unsubscribe as the service is a singleton
+      // and will be used across the app
+    };
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -24,12 +91,99 @@ const HumidityDetails: React.FC = () => {
       <View style={styles.content}>
         <View style={styles.humidityCard}>
           <Ionicons name="water" size={48} color="#007AFF" />
-          <Text style={styles.humidityValue}>65.5 %</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+          ) : (
+            <Text style={styles.humidityValue}>
+              {humidity !== null ? `${humidity.toFixed(1)} %` : 'No data'}
+            </Text>
+          )}
           <Text style={styles.humidityLabel}>Current Humidity</Text>
         </View>
         <View style={styles.infoSection}>
-          <Text style={styles.sectionTitle}>Humidity History</Text>
-          {/* Add humidity history chart or list here */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Humidity History</Text>
+            <View style={styles.timeRangeSelector}>
+              <TouchableOpacity 
+                style={[styles.timeButton, selectedTimeRange === 1 && styles.selectedTimeButton]} 
+                onPress={() => handleTimeRangeChange(1)}
+              >
+                <Text style={[styles.timeButtonText, selectedTimeRange === 1 && styles.selectedTimeButtonText]}>1h</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.timeButton, selectedTimeRange === 6 && styles.selectedTimeButton]} 
+                onPress={() => handleTimeRangeChange(6)}
+              >
+                <Text style={[styles.timeButtonText, selectedTimeRange === 6 && styles.selectedTimeButtonText]}>6h</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.timeButton, selectedTimeRange === 24 && styles.selectedTimeButton]} 
+                onPress={() => handleTimeRangeChange(24)}
+              >
+                <Text style={[styles.timeButtonText, selectedTimeRange === 24 && styles.selectedTimeButtonText]}>24h</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.timeButton, selectedTimeRange === 168 && styles.selectedTimeButton]} 
+                onPress={() => handleTimeRangeChange(168)}
+              >
+                <Text style={[styles.timeButtonText, selectedTimeRange === 168 && styles.selectedTimeButtonText]}>7d</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          {historyLoading ? (
+            <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+          ) : historyError ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={24} color="#007AFF" />
+              <Text style={styles.errorText}>{historyError}</Text>
+            </View>
+          ) : historyData.length === 0 ? (
+            <Text style={styles.noDataText}>No historical data available</Text>
+          ) : (
+            <View style={styles.chartContainer}>
+              <LineChart
+                data={{
+                  labels: historyData.map(item => {
+                    const date = new Date(item.time);
+                    return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+                  }).filter((_, i, arr) => i % Math.max(1, Math.floor(arr.length / 6)) === 0), // Show only 6 labels for readability
+                  datasets: [
+                    {
+                      data: historyData.map(item => item.value),
+                      color: () => '#007AFF',
+                      strokeWidth: 2
+                    }
+                  ]
+                }}
+                width={screenWidth - 40}
+                height={250}
+                chartConfig={{
+                  yAxisSuffix: '%',
+                  yAxisMin: 0,
+                  yAxisMax: 100,
+                  backgroundColor: '#ffffff',
+                  backgroundGradientFrom: '#ffffff',
+                  backgroundGradientTo: '#ffffff',
+                  decimalPlaces: 1,
+                  color: () => '#007AFF',
+                  labelColor: () => '#666',
+                  style: {
+                    borderRadius: 16
+                  },
+                  propsForDots: {
+                    r: '4',
+                    strokeWidth: '2',
+                    stroke: '#007AFF'
+                  }
+                }}
+                bezier
+                style={{
+                  marginVertical: 8,
+                  borderRadius: 16
+                }}
+              />
+            </View>
+          )}
         </View>
       </View>
     </SafeAreaView>
@@ -88,12 +242,74 @@ const styles = StyleSheet.create({
   infoSection: {
     marginTop: 20,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 15,
+  },
+  timeRangeSelector: {
+    flexDirection: 'row',
+  },
+  timeButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginLeft: 5,
+    borderRadius: 15,
+    backgroundColor: '#f0f0f0',
+  },
+  selectedTimeButton: {
+    backgroundColor: '#007AFF',
+  },
+  timeButtonText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  selectedTimeButtonText: {
+    color: '#fff',
+  },
+  loader: {
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  chartContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F8FF',
+    padding: 15,
+    borderRadius: 10,
+    marginVertical: 10,
+  },
+  errorText: {
+    color: '#007AFF',
+    marginLeft: 10,
+    fontSize: 14,
+  },
+  noDataText: {
+    textAlign: 'center',
+    color: '#666',
+    marginTop: 20,
+    fontSize: 16,
   },
 });
 
-export default HumidityDetails; 
+export default HumidityDetails;

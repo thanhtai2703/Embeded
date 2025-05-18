@@ -13,6 +13,8 @@ const MQTT_CLIENT_ID = `react-native-mqtt-${Math.random().toString(16).substring
 const MQTT_TOPIC_COMBINED = 'sensors/all/room1';
 const MQTT_TOPIC_TEMP = 'sensors/temperature/room1';
 const MQTT_TOPIC_HUMIDITY = 'sensors/humidity/room1';
+// Control topics
+const MQTT_TOPIC_SECURITY_CONTROL = 'control/security/room1';
 
 type MQTTMessage = {
   temperature?: number;
@@ -22,6 +24,8 @@ type MQTTMessage = {
   led_status?: string;
   gas_alert?: string;
   door_status?: string;
+  security_mode?: string;
+  security_alarm?: string;
   timestamp?: string | number;
   unit?: string;
 };
@@ -132,6 +136,18 @@ class MQTTService {
 
   isClientConnected(): boolean {
     return this.isConnected;
+  }
+
+  // Function to publish security control message
+  publishSecurityControl(enabled: boolean): void {
+    if (!this.client || !this.isConnected) {
+      console.warn('Cannot publish: MQTT client not connected');
+      return;
+    }
+    
+    const message = enabled ? 'ON' : 'OFF';
+    this.client.publish(MQTT_TOPIC_SECURITY_CONTROL, message, { qos: 1 });
+    console.log(`Published security control message: ${message}`);
   }
 }
 
