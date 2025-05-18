@@ -15,6 +15,7 @@ const MQTT_TOPIC_TEMP = 'sensors/temperature/room1';
 const MQTT_TOPIC_HUMIDITY = 'sensors/humidity/room1';
 // Control topics
 const MQTT_TOPIC_SECURITY_CONTROL = 'control/security/room1';
+const MQTT_TOPIC_GARAGE_LIGHT_CONTROL = 'control/garage/light';
 
 type MQTTMessage = {
   temperature?: number;
@@ -148,6 +149,18 @@ class MQTTService {
     const message = enabled ? 'ON' : 'OFF';
     this.client.publish(MQTT_TOPIC_SECURITY_CONTROL, message, { qos: 1 });
     console.log(`Published security control message: ${message}`);
+  }
+
+  // Function to publish garage auto light control message
+  publishAutoLightControl(enabled: boolean): void {
+    if (!this.client || !this.isConnected) {
+      console.warn('Cannot publish: MQTT client not connected');
+      return;
+    }
+    
+    const message = enabled ? 'ON' : 'OFF';
+    this.client.publish(MQTT_TOPIC_GARAGE_LIGHT_CONTROL, message, { qos: 1 });
+    console.log(`Published auto light control message: ${message}`);
   }
 }
 

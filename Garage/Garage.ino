@@ -67,7 +67,7 @@ CAUw7C29C79Fv1C5qfPrmAESrciIxpg0X40KPMbp1ZWVbd4=
 const char* temp_topic = "sensors/temperature/garage";
 const char* humidity_topic = "sensors/humidity/garage";
 const char* dht_topic = "sensors/dht11/garage";
-const char* light_topic = "sensors/light/garage";
+const char* light_control_topic = "control/garage/light"; // Topic for receiving light control commands
 
 // Initialize the OLED display
 Adafruit_SH1106G display = Adafruit_SH1106G(128, 64, &Wire, OLED_RESET);
@@ -93,6 +93,7 @@ float humidity = 0.0;          // Humidity from DHT11
 int lightValue = 0;            // Light sensor reading
 bool ledOn = false;            // LED state
 bool led2On = false;           // Second LED state
+bool autoLightEnabled = false;  // Auto light control enabled by default
 unsigned long doorOpenTime = 0; // Time when door was opened
 unsigned long lastDistanceCheckTime = 0; // Last time distance was checked
 const unsigned long distanceCheckInterval = 200; // Check distance every 200ms
@@ -129,6 +130,7 @@ void reconnect_mqtt();
 void publishDHTData();
 void handleLightControl();
 void publishLightData();
+void mqtt_callback(char* topic, byte* payload, unsigned int length); // MQTT message callback
 
 void setup() {
   // Initialize serial communication for debugging
@@ -186,6 +188,8 @@ void setup() {
     
     // Configure MQTT connection
     mqtt_client.setServer(mqtt_broker, mqtt_port);
+    mqtt_client.setCallback(mqtt_callback);
+    Serial.println("MQTT callback function set");
     
     // Connect to MQTT broker
     reconnect_mqtt();
@@ -420,6 +424,11 @@ void reconnect_mqtt() {
     if (mqtt_client.connect(client_id, mqtt_username, mqtt_password)) {
       Serial.println("Connected to EMQX Cloud successfully");
       mqttConnected = true;
+      
+      // Subscribe to the light control topic
+      mqtt_client.subscribe(light_control_topic);
+      Serial.print("Subscribed to topic: ");
+      Serial.println(light_control_topic);
     } else {
       retry_count++;
       Serial.print("Failed to connect, rc=");
@@ -479,23 +488,66 @@ void readLightSensor() {
   Serial.println(lightValue);
 }
 
-// Function to control LEDs based on light level
+// Function to control LEDs based on light level and auto light setting
 void handleLightControl() {
-  // If light level is below threshold (darker), turn on LEDs
-  if (lightValue > LIGHT_THRESHOLD && (!ledOn || !led2On)) {
-    digitalWrite(LED_PIN, HIGH);
-    digitalWrite(LED_PIN2, HIGH);
-    ledOn = true;
-    led2On = true;
-    Serial.println("LEDs turned ON due to low light");
+  // Only control lights automatically if auto light is enabled
+  if (autoLightEnabled) {
+    // If light level is below threshold (darker), turn on LEDs
+    if (lightValue > LIGHT_THRESHOLD && (!ledOn || !led2On)) {
+      digitalWrite(LED_PIN, HIGH);
+      digitalWrite(LED_PIN2, HIGH);
+      ledOn = true;
+      led2On = true;
+      Serial.println("LEDs turned ON due to low light");
+    }
+    // If light level is above threshold (brighter), turn off LEDs
+    else if (lightValue <= LIGHT_THRESHOLD && (ledOn || led2On)) {
+      digitalWrite(LED_PIN, LOW);
+      digitalWrite(LED_PIN2, LOW);
+      ledOn = false;
+      led2On = false;
+      Serial.println("LEDs turned OFF due to sufficient light");
+    }
   }
-  // If light level is above threshold (brighter), turn off LEDs
-  else if (lightValue <= LIGHT_THRESHOLD && (ledOn || led2On)) {
+  // If auto light is disabled, ensure LEDs are off
+  else if (!autoLightEnabled && (ledOn || led2On)) {
     digitalWrite(LED_PIN, LOW);
     digitalWrite(LED_PIN2, LOW);
     ledOn = false;
     led2On = false;
-    Serial.println("LEDs turned OFF due to sufficient light");
+  }
+}
+
+// MQTT message callback function
+void mqtt_callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message arrived on topic: ");
+  Serial.print(topic);
+  Serial.print(". Message: ");
+  
+  // Convert payload to string for easier handling
+  String message;
+  for (int i = 0; i < length; i++) {
+    message += (char)payload[i];
+  }
+  Serial.println(message);
+  
+  // Handle light control topic
+  if (String(topic) == light_control_topic) {
+    if (message == "ON") {
+      autoLightEnabled = true;
+      Serial.println("Auto light control enabled");
+      // Apply light control immediately based on current light value
+      handleLightControl();
+    } else if (message == "OFF") {
+      autoLightEnabled = false;
+      Serial.println("Auto light control disabled");
+      // Turn off LEDs when auto light is disabled
+      digitalWrite(LED_PIN, LOW);
+      digitalWrite(LED_PIN2, LOW);
+      ledOn = false;
+      led2On = false;
+      Serial.println("LEDs turned OFF due to auto light being disabled");
+    }
   }
 }
 
@@ -512,6 +564,7 @@ void publishLightData() {
   jsonDoc["light"] = lightValue;
   jsonDoc["led_status"] = ledOn ? "ON" : "OFF";
   jsonDoc["led2_status"] = led2On ? "ON" : "OFF";
+  jsonDoc["auto_light"] = autoLightEnabled ? "ON" : "OFF";
   jsonDoc["timestamp"] = millis();
   
   // Serialize JSON to a string
@@ -521,8 +574,7 @@ void publishLightData() {
   // Publish light value as a string
   char lightStr[10];
   itoa(lightValue, lightStr, 10);
-  mqtt_client.publish(light_topic, lightStr);
-  
+
   Serial.println("Light data published to MQTT broker");
 }
 
@@ -530,13 +582,15 @@ void publishLightData() {
 void updateDisplay() {
   // Check if any values have changed since last update
   // Only update the display if something has changed or it's been a long time
+  static bool lastDisplayedAutoLightState = true; // Initialize with default value
   bool stateChanged = (abs(lastDisplayedDistance - filteredDistance) > 0.5) || 
                       (lastDisplayedDoorState != doorOpen) || 
                       (abs(lastDisplayedTemperature - temperature) > 0.1) || 
                       (abs(lastDisplayedHumidity - humidity) > 0.1) ||
                       (lastDisplayedLightValue != lightValue) ||
                       (lastDisplayedLedState != ledOn) ||
-                      (lastDisplayedLed2State != led2On);
+                      (lastDisplayedLed2State != led2On) ||
+                      (lastDisplayedAutoLightState != autoLightEnabled);
   
   static unsigned long lastFullUpdateTime = 0;
   unsigned long currentTime = millis();
@@ -551,6 +605,7 @@ void updateDisplay() {
     lastDisplayedLightValue = lightValue;
     lastDisplayedLedState = ledOn;
     lastDisplayedLed2State = led2On;
+    lastDisplayedAutoLightState = autoLightEnabled;
     lastFullUpdateTime = currentTime;
     
     // Clear the display
@@ -591,12 +646,12 @@ void updateDisplay() {
     
     // Display light level and LED status on a new line
     display.setCursor(0, 62);
-    display.print("Light: ");
+    display.print("L:");
     display.print(lightValue);
     display.print(" LED1:");
     display.print(ledOn ? "ON" : "OFF");
-    display.print(" LED2:");
-    display.print(led2On ? "ON" : "OFF");
+    display.print(" Auto:");
+    display.print(autoLightEnabled ? "ON" : "OFF");
     
     // Update the display
     display.display();

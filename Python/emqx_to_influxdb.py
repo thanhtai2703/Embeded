@@ -180,7 +180,7 @@ class EMQXToInfluxDB:
               |> range(start: {start_time.isoformat()}Z, stop: {end_time.isoformat()}Z)
               |> filter(fn: (r) => r["_measurement"] == "{measurement}")
               |> filter(fn: (r) => r["_field"] == "value")
-              |> aggregateWindow(every: 5m, fn: mean, createEmpty: false)
+              |> aggregateWindow(every: 2m, fn: mean, createEmpty: false)
               |> yield(name: "mean")
             '''
             
