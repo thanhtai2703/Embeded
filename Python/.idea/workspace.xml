@@ -5,16 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="eff8395f-113b-47ef-b211-07a9bcf0f366" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../Application/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../Application/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Application/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../Application/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Application/src/components/HomeMenu.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../Application/src/components/HomeMenu.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Application/src/navigation/AppNavigator.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../Application/src/navigation/AppNavigator.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Application/src/screens/HumidityDetails.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../Application/src/screens/HumidityDetails.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Application/src/screens/TemperatureDetails.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../Application/src/screens/TemperatureDetails.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Application/src/services/MQTTService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../Application/src/services/MQTTService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Garage/Garage.ino" beforeDir="false" afterPath="$PROJECT_DIR$/../Garage/Garage.ino" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../MainHome/MainHome.ino" beforeDir="false" afterPath="$PROJECT_DIR$/../MainHome/MainHome.ino" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/emqx_to_influxdb.py" beforeDir="false" afterPath="$PROJECT_DIR$/emqx_to_influxdb.py" afterDir="false" />
     </list>
@@ -72,6 +62,9 @@
       <workItem from="1747307255489" duration="3246000" />
       <workItem from="1747531145104" duration="110000" />
       <workItem from="1747536629891" duration="8965000" />
+      <workItem from="1747555384682" duration="150000" />
+      <workItem from="1747555859473" duration="884000" />
+      <workItem from="1747567431509" duration="1581000" />
     </task>
     <servers />
   </component>
@@ -79,7 +72,7 @@
     <option name="version" value="3" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/Python$emqx_to_influxdb.coverage" NAME="emqx_to_influxdb Coverage Results" MODIFIED="1747536641354" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Python$emqx_to_influxdb.coverage" NAME="emqx_to_influxdb Coverage Results" MODIFIED="1747567440910" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/Python$api_server.coverage" NAME="api_server Coverage Results" MODIFIED="1747531162748" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

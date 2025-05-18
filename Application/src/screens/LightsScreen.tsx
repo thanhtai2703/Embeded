@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import mqttService from '../services/MQTTService';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -13,6 +14,8 @@ const LightsScreen: React.FC = () => {
     livingRoom: false,
     bedroom: false,
   });
+  const [AutoLight, setAutoLight] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
 
   const toggleLight = (light: keyof typeof lights) => {
     setLights(prev => ({
@@ -20,6 +23,30 @@ const LightsScreen: React.FC = () => {
       [light]: !prev[light],
     }));
   };
+
+  const toggleAutoLight = (value: boolean) => {
+    setAutoLight(value);
+    mqttService.publishAutoLightControl(value);
+  };
+
+  useEffect(() => {
+    // Connect to MQTT if not already connected
+    if (!mqttService.isClientConnected()) {
+      mqttService.connect()
+        .then(() => setIsConnected(true))
+        .catch(error => {
+          console.error('Failed to connect to MQTT:', error);
+          setIsConnected(false);
+        });
+    } else {
+      setIsConnected(true);
+    }
+
+    return () => {
+      // No need to disconnect as the service is a singleton
+      // and will be used across the app
+    };
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -56,6 +83,19 @@ const LightsScreen: React.FC = () => {
               onValueChange={() => toggleLight('bedroom')}
               trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
               thumbColor="#fff"
+            />
+          </View>
+          <View style={styles.lightRow}>
+            <View style={styles.lightInfo}>
+              <Ionicons name="car" size={24} color="#333" />
+              <Text style={styles.lightName}>Auto Light</Text>
+            </View>
+            <Switch
+              value={AutoLight}
+              onValueChange={toggleAutoLight}
+              trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
+              thumbColor="#fff"
+              disabled={!isConnected}
             />
           </View>
         </View>
@@ -121,4 +161,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LightsScreen; 
+export default LightsScreen;
