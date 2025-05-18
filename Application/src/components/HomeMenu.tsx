@@ -162,6 +162,10 @@ const HomeMenu: React.FC = () => {
   const handleHumidityPress = () => {
     navigation.navigate('HumidityDetails');
   };
+  
+  const handleSecurityPress = () => {
+    navigation.navigate('Security');
+  };
 
   // Connect to MQTT and handle sensor data
   useEffect(() => {
@@ -257,11 +261,11 @@ const HomeMenu: React.FC = () => {
             <Text style={styles.sectionTitle}>SECURITY</Text>
             <View style={styles.devicesList}>
               <DeviceRow
-                name="Alarm System"
+                name="Security System"
                 icon="shield"
                 iconColor="#FF3B30"
-                isEnabled={security.alarm}
-                onToggle={() => toggleSecurity('alarm')}
+                showArrow={true}
+                onPress={handleSecurityPress}
               />
             </View>
           </View>

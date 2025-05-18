@@ -1,23 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-EMQX Cloud to InfluxDB Data Transfer
-
-This script connects to an EMQX MQTT broker, subscribes to specified topics,
-and forwards the received data to an InfluxDB database.
-"""
 
 import logging
 import os
 import json
 import time
-from datetime import datetime
-from typing import Dict, Any
+from datetime import datetime, timedelta
+from typing import Dict, Any, List
 
 import paho.mqtt.client as mqtt
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+import threading
 
 # Configure logging
 logging.basicConfig(
@@ -53,6 +50,7 @@ class EMQXToInfluxDB:
         self.mqtt_client = None
         self.influxdb_client = None
         self.write_api = None
+        self.query_api = None
         self.connected_to_mqtt = False
         self.connected_to_influxdb = False
 
@@ -85,6 +83,7 @@ class EMQXToInfluxDB:
                 org=self.config.INFLUXDB_ORG
             )
             self.write_api = self.influxdb_client.write_api(write_options=SYNCHRONOUS)
+            self.query_api = self.influxdb_client.query_api()
             logger.info("Successfully connected to InfluxDB Cloud")
             self.connected_to_influxdb = True
             return True
@@ -155,6 +154,83 @@ class EMQXToInfluxDB:
         except Exception as e:
             logger.error(f"Error writing to InfluxDB: {e}")
 
+    def get_historical_data(self, measurement: str, hours: int = 24) -> List[Dict[str, Any]]:
+        """
+        Query InfluxDB for historical data of a specific measurement
+        
+        Args:
+            measurement: The measurement to query (temperature or humidity)
+            hours: Number of hours to look back
+            
+        Returns:
+            List of data points with time and value
+        """
+        if not self.connected_to_influxdb:
+            logger.warning("Not connected to InfluxDB, cannot query data")
+            return []
+            
+        try:
+            # Calculate the time range
+            end_time = datetime.utcnow()
+            start_time = end_time - timedelta(hours=hours)
+            
+            # Build the Flux query
+            query = f'''
+            from(bucket: "{self.config.INFLUXDB_BUCKET}")
+              |> range(start: {start_time.isoformat()}Z, stop: {end_time.isoformat()}Z)
+              |> filter(fn: (r) => r["_measurement"] == "{measurement}")
+              |> filter(fn: (r) => r["_field"] == "value")
+              |> aggregateWindow(every: 5m, fn: mean, createEmpty: false)
+              |> yield(name: "mean")
+            '''
+            
+            # Execute the query
+            result = self.query_api.query(query=query, org=self.config.INFLUXDB_ORG)
+            
+            # Process the results
+            data_points = []
+            for table in result:
+                for record in table.records:
+                    data_points.append({
+                        "time": record.get_time().isoformat(),
+                        "value": record.get_value()
+                    })
+            
+            return data_points
+        except Exception as e:
+            logger.error(f"Error querying InfluxDB for {measurement} history: {e}")
+            return []
+    
+    def start_api_server(self, host='0.0.0.0', port=5000):
+        """
+        Start a Flask API server to serve historical data
+        """
+        app = Flask(__name__)
+        CORS(app)  # Enable CORS for all routes
+        
+        @app.route('/api/temperature/history', methods=['GET'])
+        def temperature_history():
+            hours = request.args.get('hours', default=24, type=int)
+            data = self.get_historical_data('temperature', hours)
+            return jsonify({'data': data})
+        
+        @app.route('/api/humidity/history', methods=['GET'])
+        def humidity_history():
+            hours = request.args.get('hours', default=24, type=int)
+            data = self.get_historical_data('humidity', hours)
+            return jsonify({'data': data})
+        
+        @app.route('/api/health', methods=['GET'])
+        def health_check():
+            return jsonify({
+                'status': 'ok',
+                'mqtt_connected': self.connected_to_mqtt,
+                'influxdb_connected': self.connected_to_influxdb
+            })
+        
+        logger.info(f"Starting API server on {host}:{port}")
+        app.run(host=host, port=port, debug=False, threaded=True)
+    
     def run(self):
         if not self.setup_mqtt():
             logger.error("Failed to set up MQTT client, exiting")
@@ -162,8 +238,15 @@ class EMQXToInfluxDB:
         if not self.setup_influxdb():
             logger.error("Failed to set up InfluxDB client, exiting")
             return
+        
+        # Start MQTT client in a separate thread
         self.mqtt_client.loop_start()
-
+        
+        # Start API server in a separate thread
+        api_thread = threading.Thread(target=self.start_api_server)
+        api_thread.daemon = True
+        api_thread.start()
+        
         try:
             while True:
                 time.sleep(10)  # Keep the script running

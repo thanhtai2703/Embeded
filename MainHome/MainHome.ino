@@ -70,6 +70,8 @@ const char* light_topic = "sensors/light/room1";
 const char* security_topic = "sensors/security/room1"; // New topic for security status
 // Combined topic for all sensor data
 const char* sensors_topic = "sensors/all/room1";
+// Control topics
+const char* security_control_topic = "control/security/room1"; // Topic for receiving security control commands
 
 // Keypad configuration
 #define ROW_NUM 4              // 4 rows
@@ -179,6 +181,7 @@ void stopSecurityAlarm();
 void setup_wifi();
 void reconnect_mqtt();
 void publishSensorData();
+void mqtt_callback(char* topic, byte* payload, unsigned int length);
 
 // Function to set up WiFi connection
 void setup_wifi() {
@@ -209,6 +212,71 @@ void setup_wifi() {
   }
 }
 
+// MQTT message callback function
+void mqtt_callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message arrived on topic: ");
+  Serial.print(topic);
+  Serial.print(". Message: ");
+  
+  // Convert payload to string for easier handling
+  char message[length + 1];
+  for (unsigned int i = 0; i < length; i++) {
+    message[i] = (char)payload[i];
+  }
+  message[length] = '\0'; // Null-terminate the string
+  
+  Serial.println(message);
+  
+  // Check if this is a security control message
+  if (strcmp(topic, security_control_topic) == 0) {
+    // Handle security control message
+    if (strcmp(message, "ON") == 0 && !securityModeEnabled) {
+      // Turn security mode ON if it's currently OFF
+      toggleSecurityMode();
+      Serial.println("Security mode turned ON via MQTT");
+      
+      // Show security mode status on display
+      display.clearDisplay();
+      display.setTextSize(1);
+      display.setCursor(0, 0);
+      display.println("ESP32 Smart Home");
+      display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
+      
+      display.setCursor(0, 25);
+      display.setTextSize(2);
+      display.println("SECURITY");
+      display.println("ENABLED");
+      display.display();
+      delay(2000); // Show message for 2 seconds
+      
+      // Return to normal display
+      updateDisplay();
+    } 
+    else if (strcmp(message, "OFF") == 0 && securityModeEnabled) {
+      // Turn security mode OFF if it's currently ON
+      toggleSecurityMode();
+      Serial.println("Security mode turned OFF via MQTT");
+      
+      // Show security mode status on display
+      display.clearDisplay();
+      display.setTextSize(1);
+      display.setCursor(0, 0);
+      display.println("ESP32 Smart Home");
+      display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
+      
+      display.setCursor(0, 25);
+      display.setTextSize(2);
+      display.println("SECURITY");
+      display.println("DISABLED");
+      display.display();
+      delay(2000); // Show message for 2 seconds
+      
+      // Return to normal display
+      updateDisplay();
+    }
+  }
+}
+
 // Function to reconnect to MQTT broker
 void reconnect_mqtt() {
   // Loop until we're reconnected or max retries reached
@@ -224,6 +292,11 @@ void reconnect_mqtt() {
     if (mqtt_client.connect(client_id, mqtt_username, mqtt_password)) {
       Serial.println("Connected to EMQX Cloud successfully");
       mqttConnected = true;
+      
+      // Subscribe to the security control topic
+      mqtt_client.subscribe(security_control_topic);
+      Serial.print("Subscribed to topic: ");
+      Serial.println(security_control_topic);
     } else {
       retry_count++;
       Serial.print("Failed to connect, rc=");
@@ -344,6 +417,8 @@ void setup() {
 
     // Configure MQTT connection
     mqtt_client.setServer(mqtt_broker, mqtt_port);
+    mqtt_client.setCallback(mqtt_callback);
+    Serial.println("MQTT callback function set");
 
     // Connect to MQTT broker
     reconnect_mqtt();

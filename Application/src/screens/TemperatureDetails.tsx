@@ -1,14 +1,81 @@
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import mqttService from '../services/MQTTService';
+import apiService from '../services/APIService';
+import { LineChart } from 'react-native-chart-kit';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+interface HistoricalData {
+  time: string;
+  value: number;
+}
+
 const TemperatureDetails: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const [temperature, setTemperature] = useState<number | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [historyData, setHistoryData] = useState<HistoricalData[]>([]);
+  const [historyLoading, setHistoryLoading] = useState<boolean>(true);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [selectedTimeRange, setSelectedTimeRange] = useState<number>(24); // Default to 24 hours
+  const screenWidth = Dimensions.get('window').width;
+
+  // Fetch historical temperature data
+  const fetchHistoricalData = async (timeRange: number = selectedTimeRange) => {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const data = await apiService.getTemperatureHistory(timeRange);
+      setHistoryData(data);
+    } catch (error) {
+      console.error('Error fetching temperature history:', error);
+      setHistoryError('Failed to load temperature history');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // Handle time range selection
+  const handleTimeRangeChange = (hours: number) => {
+    setSelectedTimeRange(hours);
+    fetchHistoricalData(hours);
+  };
+
+  useEffect(() => {
+    // Connect to MQTT if not already connected
+    if (!mqttService.isClientConnected()) {
+      mqttService.connect()
+        .then(() => setLoading(false))
+        .catch(error => {
+          console.error('Failed to connect to MQTT:', error);
+          setLoading(false);
+        });
+    } else {
+      setLoading(false);
+    }
+
+    // Subscribe to MQTT messages
+    const handleMessage = (message: any) => {
+      if (message.temperature !== undefined) {
+        setTemperature(message.temperature);
+      }
+    };
+
+    mqttService.onMessage(handleMessage);
+    
+    // Fetch historical data
+    fetchHistoricalData(selectedTimeRange);
+
+    return () => {
+      // No need to unsubscribe as the service is a singleton
+      // and will be used across the app
+    };
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -24,12 +91,99 @@ const TemperatureDetails: React.FC = () => {
       <View style={styles.content}>
         <View style={styles.temperatureCard}>
           <Ionicons name="thermometer" size={48} color="#FF3B30" />
-          <Text style={styles.temperatureValue}>25.5 °C</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color="#FF3B30" style={styles.loader} />
+          ) : (
+            <Text style={styles.temperatureValue}>
+              {temperature !== null ? `${temperature.toFixed(1)} °C` : 'No data'}
+            </Text>
+          )}
           <Text style={styles.temperatureLabel}>Current Temperature</Text>
         </View>
         <View style={styles.infoSection}>
-          <Text style={styles.sectionTitle}>Temperature History</Text>
-          {/* Add temperature history chart or list here */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Temperature History</Text>
+            <View style={styles.timeRangeSelector}>
+              <TouchableOpacity 
+                style={[styles.timeButton, selectedTimeRange === 1 && styles.selectedTimeButton]} 
+                onPress={() => handleTimeRangeChange(1)}
+              >
+                <Text style={[styles.timeButtonText, selectedTimeRange === 1 && styles.selectedTimeButtonText]}>1h</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.timeButton, selectedTimeRange === 6 && styles.selectedTimeButton]} 
+                onPress={() => handleTimeRangeChange(6)}
+              >
+                <Text style={[styles.timeButtonText, selectedTimeRange === 6 && styles.selectedTimeButtonText]}>6h</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.timeButton, selectedTimeRange === 24 && styles.selectedTimeButton]} 
+                onPress={() => handleTimeRangeChange(24)}
+              >
+                <Text style={[styles.timeButtonText, selectedTimeRange === 24 && styles.selectedTimeButtonText]}>24h</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.timeButton, selectedTimeRange === 168 && styles.selectedTimeButton]} 
+                onPress={() => handleTimeRangeChange(168)}
+              >
+                <Text style={[styles.timeButtonText, selectedTimeRange === 168 && styles.selectedTimeButtonText]}>7d</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          {historyLoading ? (
+            <ActivityIndicator size="large" color="#FF3B30" style={styles.loader} />
+          ) : historyError ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={24} color="#FF3B30" />
+              <Text style={styles.errorText}>{historyError}</Text>
+            </View>
+          ) : historyData.length === 0 ? (
+            <Text style={styles.noDataText}>No historical data available</Text>
+          ) : (
+            <View style={styles.chartContainer}>
+              <LineChart
+                data={{
+                  labels: historyData.map(item => {
+                    const date = new Date(item.time);
+                    return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+                  }).filter((_, i, arr) => i % Math.max(1, Math.floor(arr.length / 6)) === 0), // Show only 6 labels for readability
+                  datasets: [
+                    {
+                      data: historyData.map(item => item.value),
+                      color: () => '#FF3B30',
+                      strokeWidth: 2
+                    }
+                  ]
+                }}
+                width={screenWidth - 40}
+                height={250}
+                chartConfig={{
+                  yAxisSuffix: '°C',
+                  yAxisMin: 0,
+                  yAxisMax: 100,
+                  backgroundColor: '#ffffff',
+                  backgroundGradientFrom: '#ffffff',
+                  backgroundGradientTo: '#ffffff',
+                  decimalPlaces: 1,
+                  color: () => '#FF3B30',
+                  labelColor: () => '#666',
+                  style: {
+                    borderRadius: 16
+                  },
+                  propsForDots: {
+                    r: '4',
+                    strokeWidth: '2',
+                    stroke: '#FF3B30'
+                  }
+                }}
+                bezier
+                style={{
+                  marginVertical: 8,
+                  borderRadius: 16
+                }}
+              />
+            </View>
+          )}
         </View>
       </View>
     </SafeAreaView>
@@ -88,12 +242,74 @@ const styles = StyleSheet.create({
   infoSection: {
     marginTop: 20,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 15,
+  },
+  timeRangeSelector: {
+    flexDirection: 'row',
+  },
+  timeButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginLeft: 5,
+    borderRadius: 15,
+    backgroundColor: '#f0f0f0',
+  },
+  selectedTimeButton: {
+    backgroundColor: '#FF3B30',
+  },
+  timeButtonText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  selectedTimeButtonText: {
+    color: '#fff',
+  },
+  loader: {
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  chartContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF0F0',
+    padding: 15,
+    borderRadius: 10,
+    marginVertical: 10,
+  },
+  errorText: {
+    color: '#FF3B30',
+    marginLeft: 10,
+    fontSize: 14,
+  },
+  noDataText: {
+    textAlign: 'center',
+    color: '#666',
+    marginTop: 20,
+    fontSize: 16,
   },
 });
 
-export default TemperatureDetails; 
+export default TemperatureDetails;
