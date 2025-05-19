@@ -72,6 +72,7 @@ const char* dht_topic = "sensors/dht11/garage";
 const char* light_control_topic = "control/garage/light"; // Topic for receiving light control commands
 const char* living_room_light_topic = "control/garage/livingroom"; // Topic for controlling living room LED
 const char* bedroom_light_topic = "control/garage/bedroom"; // Topic for controlling bedroom LED
+const char* combined_topic = "sensors/all/room1"; // Topic for InfluxDB Cloud integration
 
 // Initialize the OLED display
 Adafruit_SH1106G display = Adafruit_SH1106G(128, 64, &Wire, OLED_RESET);
@@ -333,11 +334,11 @@ void readUltrasonicSensor() {
   distance = rawDistance;
   filteredDistance = sum / DISTANCE_SAMPLES;
   
-  Serial.print("Raw Distance: ");
-  Serial.print(distance);
-  Serial.print(" cm, Filtered: ");
-  Serial.print(filteredDistance);
-  Serial.println(" cm");
+  // Serial.print("Raw Distance: ");
+  // Serial.print(distance);
+  // Serial.print(" cm, Filtered: ");
+  // Serial.print(filteredDistance);
+  // Serial.println(" cm");
 }
 
 // Function to read temperature and humidity from DHT11 sensor
@@ -473,6 +474,8 @@ void publishDHTData() {
   jsonDoc["humidity"] = humidity;
   jsonDoc["unit"] = "celsius";
   jsonDoc["timestamp"] = millis();
+  jsonDoc["location"] = "garage"; // Add location tag for InfluxDB
+  jsonDoc["device"] = "ESP32-Garage"; // Add device identifier
   
   // Serialize JSON to a string
   char jsonBuffer[200];
@@ -490,7 +493,10 @@ void publishDHTData() {
   // Publish combined JSON data
   mqtt_client.publish(dht_topic, jsonBuffer);
   
-  Serial.println("Data published to MQTT broker");
+  // Publish to the topic that InfluxDB is listening to
+  mqtt_client.publish(combined_topic, jsonBuffer);
+  
+  Serial.println("Data published to MQTT broker and InfluxDB Cloud");
 }
 
 // Function to read light sensor value
@@ -606,16 +612,42 @@ void publishLightData() {
   jsonDoc["bedroom_led"] = bedroomLedOn ? "ON" : "OFF";
   jsonDoc["auto_light"] = autoLightEnabled ? "ON" : "OFF";
   jsonDoc["timestamp"] = millis();
+  jsonDoc["location"] = "garage"; // Add location tag for InfluxDB
+  jsonDoc["device"] = "ESP32-Garage"; // Add device identifier
   
   // Serialize JSON to a string
-  char jsonBuffer[100];
+  char jsonBuffer[200]; // Increased buffer size to accommodate the location field
   serializeJson(jsonDoc, jsonBuffer);
   
   // Publish light value as a string
   char lightStr[10];
   itoa(lightValue, lightStr, 10);
+  
+  // Define a topic for light sensor data
+  const char* light_topic = "sensors/light/garage";
+  
+  // Publish the light value to its own topic
+  mqtt_client.publish(light_topic, lightStr);
+  
+  // Publish the combined JSON data
+  const char* light_json_topic = "sensors/light_data/garage";
+  mqtt_client.publish(light_json_topic, jsonBuffer);
+  
+  // Create a JSON document specifically for InfluxDB with just the light value
+  StaticJsonDocument<100> influxDoc;
+  influxDoc["light_level"] = lightValue;
+  influxDoc["location"] = "garage";
+  influxDoc["device"] = "ESP32-Garage";
+  influxDoc["timestamp"] = millis();
+  
+  // Serialize the InfluxDB JSON to a string
+  char influxBuffer[100];
+  serializeJson(influxDoc, influxBuffer);
+  
+  // Publish to the topic that InfluxDB is listening to
+  mqtt_client.publish(combined_topic, influxBuffer);
 
-  Serial.println("Light data published to MQTT broker");
+  Serial.println("Light data published to MQTT broker and InfluxDB Cloud");
 }
 
 // Function to update the OLED display
