@@ -72,7 +72,7 @@ const char* dht_topic = "sensors/dht11/garage";
 const char* light_control_topic = "control/garage/light"; // Topic for receiving light control commands
 const char* living_room_light_topic = "control/garage/livingroom"; // Topic for controlling living room LED
 const char* bedroom_light_topic = "control/garage/bedroom"; // Topic for controlling bedroom LED
-const char* combined_topic = "sensors/all/room1"; // Topic for InfluxDB Cloud integration
+const char* combined_topic = "sensors/all/garage"; // Topic for InfluxDB Cloud integration
 
 // Initialize the OLED display
 Adafruit_SH1106G display = Adafruit_SH1106G(128, 64, &Wire, OLED_RESET);
