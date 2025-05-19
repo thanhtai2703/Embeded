@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,25 +18,50 @@ interface HistoricalData {
 const HumidityDetails: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const [humidity, setHumidity] = useState<number | null>(null);
+  const [garageHumidity, setGarageHumidity] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [historyData, setHistoryData] = useState<HistoricalData[]>([]);
-  const [historyLoading, setHistoryLoading] = useState<boolean>(true);
-  const [historyError, setHistoryError] = useState<string | null>(null);
+  
+  // MainHome history data
+  const [mainHomeHistoryData, setMainHomeHistoryData] = useState<HistoricalData[]>([]);
+  const [mainHomeHistoryLoading, setMainHomeHistoryLoading] = useState<boolean>(true);
+  const [mainHomeHistoryError, setMainHomeHistoryError] = useState<string | null>(null);
+  
+  // Garage history data
+  const [garageHistoryData, setGarageHistoryData] = useState<HistoricalData[]>([]);
+  const [garageHistoryLoading, setGarageHistoryLoading] = useState<boolean>(true);
+  const [garageHistoryError, setGarageHistoryError] = useState<string | null>(null);
+  
   const [selectedTimeRange, setSelectedTimeRange] = useState<number>(24); // Default to 24 hours
   const screenWidth = Dimensions.get('window').width;
 
-  // Fetch historical humidity data
+  // Fetch historical humidity data for both locations
   const fetchHistoricalData = async (timeRange: number = selectedTimeRange) => {
-    setHistoryLoading(true);
-    setHistoryError(null);
+    // Fetch MainHome data
+    setMainHomeHistoryLoading(true);
+    setMainHomeHistoryError(null);
+    
+    // Fetch Garage data
+    setGarageHistoryLoading(true);
+    setGarageHistoryError(null);
+    
     try {
-      const data = await apiService.getHumidityHistory(timeRange);
-      setHistoryData(data);
+      const mainHomeData = await apiService.getMainHomeHumidityHistory(timeRange);
+      setMainHomeHistoryData(mainHomeData);
     } catch (error) {
-      console.error('Error fetching humidity history:', error);
-      setHistoryError('Failed to load humidity history');
+      console.error('Error fetching MainHome humidity history:', error);
+      setMainHomeHistoryError('Failed to load MainHome humidity history');
     } finally {
-      setHistoryLoading(false);
+      setMainHomeHistoryLoading(false);
+    }
+    
+    try {
+      const garageData = await apiService.getGarageHumidityHistory(timeRange);
+      setGarageHistoryData(garageData);
+    } catch (error) {
+      console.error('Error fetching Garage humidity history:', error);
+      setGarageHistoryError('Failed to load Garage humidity history');
+    } finally {
+      setGarageHistoryLoading(false);
     }
   };
 
@@ -61,8 +86,16 @@ const HumidityDetails: React.FC = () => {
 
     // Subscribe to MQTT messages
     const handleMessage = (message: any) => {
+      // Check if the message contains humidity data
       if (message.humidity !== undefined) {
-        setHumidity(message.humidity);
+        // Check the location to determine which humidity to update
+        const location = message.location || 'MainHome'; // Default to MainHome if location not specified
+        
+        if (location === 'MainHome') {
+          setHumidity(message.humidity);
+        } else if (location === 'garage' || location === 'Garage') {
+          setGarageHumidity(message.humidity);
+        }
       }
     };
 
@@ -88,104 +121,197 @@ const HumidityDetails: React.FC = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Humidity Details</Text>
       </View>
-      <View style={styles.content}>
-        <View style={styles.humidityCard}>
-          <Ionicons name="water" size={48} color="#007AFF" />
-          {loading ? (
-            <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
-          ) : (
-            <Text style={styles.humidityValue}>
-              {humidity !== null ? `${humidity.toFixed(1)} %` : 'No data'}
-            </Text>
-          )}
-          <Text style={styles.humidityLabel}>Current Humidity</Text>
-        </View>
-        <View style={styles.infoSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Humidity History</Text>
-            <View style={styles.timeRangeSelector}>
-              <TouchableOpacity 
-                style={[styles.timeButton, selectedTimeRange === 1 && styles.selectedTimeButton]} 
-                onPress={() => handleTimeRangeChange(1)}
-              >
-                <Text style={[styles.timeButtonText, selectedTimeRange === 1 && styles.selectedTimeButtonText]}>1h</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.timeButton, selectedTimeRange === 6 && styles.selectedTimeButton]} 
-                onPress={() => handleTimeRangeChange(6)}
-              >
-                <Text style={[styles.timeButtonText, selectedTimeRange === 6 && styles.selectedTimeButtonText]}>6h</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.timeButton, selectedTimeRange === 24 && styles.selectedTimeButton]} 
-                onPress={() => handleTimeRangeChange(24)}
-              >
-                <Text style={[styles.timeButtonText, selectedTimeRange === 24 && styles.selectedTimeButtonText]}>24h</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.timeButton, selectedTimeRange === 168 && styles.selectedTimeButton]} 
-                onPress={() => handleTimeRangeChange(168)}
-              >
-                <Text style={[styles.timeButtonText, selectedTimeRange === 168 && styles.selectedTimeButtonText]}>7d</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-          {historyLoading ? (
-            <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
-          ) : historyError ? (
-            <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={24} color="#007AFF" />
-              <Text style={styles.errorText}>{historyError}</Text>
-            </View>
-          ) : historyData.length === 0 ? (
-            <Text style={styles.noDataText}>No historical data available</Text>
-          ) : (
-            <View style={styles.chartContainer}>
-              <LineChart
-                data={{
-                  labels: historyData.map(item => {
-                    const date = new Date(item.time);
-                    return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
-                  }).filter((_, i, arr) => i % Math.max(1, Math.floor(arr.length / 6)) === 0), // Show only 6 labels for readability
-                  datasets: [
-                    {
-                      data: historyData.map(item => item.value),
-                      color: () => '#007AFF',
-                      strokeWidth: 2
-                    }
-                  ]
-                }}
-                width={screenWidth - 40}
-                height={250}
-                chartConfig={{
-                  yAxisSuffix: '%',
-                  yAxisMin: 0,
-                  yAxisMax: 100,
-                  backgroundColor: '#ffffff',
-                  backgroundGradientFrom: '#ffffff',
-                  backgroundGradientTo: '#ffffff',
-                  decimalPlaces: 1,
-                  color: () => '#007AFF',
-                  labelColor: () => '#666',
-                  style: {
-                    borderRadius: 16
-                  },
-                  propsForDots: {
-                    r: '4',
-                    strokeWidth: '2',
-                    stroke: '#007AFF'
-                  }
-                }}
-                bezier
-                style={{
-                  marginVertical: 8,
-                  borderRadius: 16
-                }}
-              />
-            </View>
-          )}
+      
+      {/* Time Range Selector - Common for both charts */}
+      <View style={styles.timeRangeSelectorContainer}>
+        <Text style={styles.sectionTitle}>Select Time Range</Text>
+        <View style={styles.timeRangeSelector}>
+          <TouchableOpacity 
+            style={[styles.timeButton, selectedTimeRange === 1 && styles.selectedTimeButton]} 
+            onPress={() => handleTimeRangeChange(1)}
+          >
+            <Text style={[styles.timeButtonText, selectedTimeRange === 1 && styles.selectedTimeButtonText]}>1h</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.timeButton, selectedTimeRange === 6 && styles.selectedTimeButton]} 
+            onPress={() => handleTimeRangeChange(6)}
+          >
+            <Text style={[styles.timeButtonText, selectedTimeRange === 6 && styles.selectedTimeButtonText]}>6h</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.timeButton, selectedTimeRange === 24 && styles.selectedTimeButton]} 
+            onPress={() => handleTimeRangeChange(24)}
+          >
+            <Text style={[styles.timeButtonText, selectedTimeRange === 24 && styles.selectedTimeButtonText]}>24h</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.timeButton, selectedTimeRange === 168 && styles.selectedTimeButton]} 
+            onPress={() => handleTimeRangeChange(168)}
+          >
+            <Text style={[styles.timeButtonText, selectedTimeRange === 168 && styles.selectedTimeButtonText]}>7d</Text>
+          </TouchableOpacity>
         </View>
       </View>
+      
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.content}>
+          {/* MainHome Humidity Section */}
+          <View style={styles.humidityCard}>
+            <View style={styles.locationHeader}>
+              <Ionicons name="home" size={24} color="#333" />
+              <Text style={styles.locationTitle}>MainHome</Text>
+            </View>
+            <View style={styles.humidityDisplay}>
+              <Ionicons name="water" size={48} color="#007AFF" />
+              {loading ? (
+                <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+              ) : (
+                <Text style={styles.humidityValue}>
+                  {humidity !== null ? `${humidity.toFixed(1)} %` : 'No data'}
+                </Text>
+              )}
+              <Text style={styles.humidityLabel}>Current Humidity</Text>
+            </View>
+          </View>
+          
+          {/* MainHome Humidity History Chart */}
+          <View style={styles.infoSection}>
+            <Text style={styles.sectionTitle}>MainHome Humidity History</Text>
+            {mainHomeHistoryLoading ? (
+              <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
+            ) : mainHomeHistoryError ? (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={24} color="#007AFF" />
+                <Text style={styles.errorText}>{mainHomeHistoryError}</Text>
+              </View>
+            ) : mainHomeHistoryData.length === 0 ? (
+              <Text style={styles.noDataText}>No historical data available</Text>
+            ) : (
+              <View style={styles.chartContainer}>
+                <LineChart
+                  data={{
+                    labels: mainHomeHistoryData.map(item => {
+                      const date = new Date(item.time);
+                      return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+                    }).filter((_, i, arr) => i % Math.max(1, Math.floor(arr.length / 6)) === 0), // Show only 6 labels for readability
+                    datasets: [
+                      {
+                        data: mainHomeHistoryData.map(item => item.value),
+                        color: () => '#007AFF',
+                        strokeWidth: 2
+                      }
+                    ]
+                  }}
+                  width={screenWidth - 40}
+                  height={220}
+                  chartConfig={{
+                    yAxisSuffix: '%',
+                    yAxisMin: 0,
+                    yAxisMax: 100,
+                    backgroundColor: '#ffffff',
+                    backgroundGradientFrom: '#ffffff',
+                    backgroundGradientTo: '#ffffff',
+                    decimalPlaces: 1,
+                    color: () => '#007AFF',
+                    labelColor: () => '#666',
+                    style: {
+                      borderRadius: 16
+                    },
+                    propsForDots: {
+                      r: '4',
+                      strokeWidth: '2',
+                      stroke: '#007AFF'
+                    }
+                  }}
+                  bezier
+                  style={{
+                    marginVertical: 8,
+                    borderRadius: 16
+                  }}
+                />
+              </View>
+            )}
+          </View>
+          
+          {/* Garage Humidity Section */}
+          <View style={[styles.humidityCard, styles.secondCard]}>
+            <View style={styles.locationHeader}>
+              <Ionicons name="car" size={24} color="#333" />
+              <Text style={styles.locationTitle}>Garage</Text>
+            </View>
+            <View style={styles.humidityDisplay}>
+              <Ionicons name="water" size={48} color="#5AC8FA" />
+              {loading ? (
+                <ActivityIndicator size="large" color="#5AC8FA" style={styles.loader} />
+              ) : (
+                <Text style={styles.humidityValue}>
+                  {garageHumidity !== null ? `${garageHumidity.toFixed(1)} %` : 'No data'}
+                </Text>
+              )}
+              <Text style={styles.humidityLabel}>Current Humidity</Text>
+            </View>
+          </View>
+          
+          {/* Garage Humidity History Chart */}
+          <View style={styles.infoSection}>
+            <Text style={styles.sectionTitle}>Garage Humidity History</Text>
+            {garageHistoryLoading ? (
+              <ActivityIndicator size="large" color="#5AC8FA" style={styles.loader} />
+            ) : garageHistoryError ? (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={24} color="#5AC8FA" />
+                <Text style={styles.errorText}>{garageHistoryError}</Text>
+              </View>
+            ) : garageHistoryData.length === 0 ? (
+              <Text style={styles.noDataText}>No historical data available</Text>
+            ) : (
+              <View style={styles.chartContainer}>
+                <LineChart
+                  data={{
+                    labels: garageHistoryData.map(item => {
+                      const date = new Date(item.time);
+                      return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+                    }).filter((_, i, arr) => i % Math.max(1, Math.floor(arr.length / 6)) === 0), // Show only 6 labels for readability
+                    datasets: [
+                      {
+                        data: garageHistoryData.map(item => item.value),
+                        color: () => '#5AC8FA',
+                        strokeWidth: 2
+                      }
+                    ]
+                  }}
+                  width={screenWidth - 40}
+                  height={220}
+                  chartConfig={{
+                    yAxisSuffix: '%',
+                    yAxisMin: 0,
+                    yAxisMax: 100,
+                    backgroundColor: '#ffffff',
+                    backgroundGradientFrom: '#ffffff',
+                    backgroundGradientTo: '#ffffff',
+                    decimalPlaces: 1,
+                    color: () => '#5AC8FA',
+                    labelColor: () => '#666',
+                    style: {
+                      borderRadius: 16
+                    },
+                    propsForDots: {
+                      r: '4',
+                      strokeWidth: '2',
+                      stroke: '#5AC8FA'
+                    }
+                  }}
+                  bezier
+                  style={{
+                    marginVertical: 8,
+                    borderRadius: 16
+                  }}
+                />
+              </View>
+            )}
+          </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -309,6 +435,34 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 20,
     fontSize: 16,
+  },
+  // Add missing styles
+  timeRangeSelectorContainer: {
+    padding: 15,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  // Additional styles from the component
+  secondCard: {
+    marginTop: 20,
+  },
+  locationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  locationTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginLeft: 10,
+  },
+  humidityDisplay: {
+    alignItems: 'center',
   },
 });
 

@@ -178,7 +178,7 @@ const HomeMenu: React.FC = () => {
         mqttService.onMessage((message) => {
           console.log('Received MQTT message:', message);
           
-          if (message.temperature !== undefined && message.humidity !== undefined) {
+          if (message.location == "MainHome" && message.temperature !== undefined && message.humidity !== undefined) {
             setSensorData(prev => ({
               ...prev,
               temperature: `${message.temperature.toFixed(1)} °C`,
