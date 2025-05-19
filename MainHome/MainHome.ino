@@ -8,6 +8,7 @@
 #include <PubSubClient.h>      // MQTT library
 #include <WiFiClientSecure.h>  // For secure WiFi connection
 #include <ArduinoJson.h>       // JSON library for formatting data
+#include <Preferences.h>       // Preferences library for persistent storage
 
 // Pin definitions
 #define DHT_PIN 4              // DHT11 data pin
@@ -144,6 +145,9 @@ char enteredPassword[5] = "";           // Buffer to store entered password
 int passwordIndex = 0;                  // Current position in password entry
 bool doorOpen = false;                  // Door state
 bool passwordChanged = false;           // Flag to indicate password was changed
+
+// Preferences instance for persistent storage
+Preferences preferences;
 
 // Timing variables
 unsigned long lastUpdateTime = 0;
@@ -436,6 +440,23 @@ void publishSensorData() {
 void setup() {
   // Initialize serial communication for debugging
   Serial.begin(115200);
+  
+  // Initialize Preferences for persistent storage
+  preferences.begin("smart-home", false); // false = RW mode
+  
+  // Load saved password from preferences if it exists
+  if (preferences.isKey("password")) {
+    String savedPassword = preferences.getString("password", "1234");
+    strncpy(correctPassword, savedPassword.c_str(), 4);
+    correctPassword[4] = '\0'; // Ensure null termination
+    Serial.print("Loaded saved password: ");
+    Serial.println(correctPassword);
+  } else {
+    // Save default password if no saved password exists
+    preferences.putString("password", correctPassword);
+    Serial.println("Saved default password to preferences");
+  }
+  
   // Initialize the DHT sensor
   dht.begin();
   Serial.println("DHT11 sensor initialized");
@@ -874,6 +895,10 @@ void changePassword(const char* newPassword) {
   // Update the password
   strncpy(correctPassword, newPassword, 4);
   correctPassword[4] = '\0'; // Ensure null termination
+  
+  // Save the new password to preferences for persistence
+  preferences.putString("password", correctPassword);
+  Serial.println("Password saved to persistent storage");
   
   // Set flag to indicate password was changed
   passwordChanged = true;
