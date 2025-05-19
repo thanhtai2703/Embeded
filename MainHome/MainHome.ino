@@ -332,6 +332,7 @@ void publishSensorData() {
   jsonDoc["security_mode"] = securityModeEnabled ? "ON" : "OFF";
   jsonDoc["security_alarm"] = securityAlarmActive ? "ON" : "OFF";
   jsonDoc["distance"] = distance;
+
   jsonDoc["timestamp"] = millis();
 
   // Serialize JSON to a string

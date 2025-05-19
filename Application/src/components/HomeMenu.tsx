@@ -5,6 +5,7 @@ import mqttService from '../services/MQTTService';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import GasMonitor from './GasMonitor';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -133,6 +134,8 @@ const HomeMenu: React.FC = () => {
   const [sensorData, setSensorData] = useState({
     temperature: 'No data',
     humidity: 'No data',
+    gasLevel: 0,
+    gasAlertStatus: 'NORMAL',
     isConnected: false,
     isLoading: true
   });
@@ -178,11 +181,21 @@ const HomeMenu: React.FC = () => {
         mqttService.onMessage((message) => {
           console.log('Received MQTT message:', message);
           
-          if (message.location == "MainHome" && message.temperature !== undefined && message.humidity !== undefined) {
+          if (message.temperature !== undefined && message.humidity !== undefined) {
             setSensorData(prev => ({
               ...prev,
               temperature: `${message.temperature.toFixed(1)} °C`,
               humidity: `${message.humidity.toFixed(1)} %`,
+              isLoading: false
+            }));
+          }
+
+          // Handle gas alert data
+          if (message.gas_level !== undefined) {
+            setSensorData(prev => ({
+              ...prev,
+              gasLevel: message.gas_level,
+              gasAlertStatus: message.gas_alert || 'NORMAL',
               isLoading: false
             }));
           }
@@ -228,6 +241,15 @@ const HomeMenu: React.FC = () => {
                 value={sensorData.humidity}
                 iconColor="#007AFF"
                 onPress={handleHumidityPress}
+              />
+            </View>
+            
+            {/* Gas Monitor Component */}
+            <View style={styles.gasMonitorContainer}>
+              <Text style={styles.gasMonitorTitle}>GAS MONITOR</Text>
+              <GasMonitor 
+                gasLevel={sensorData.gasLevel} 
+                gasAlertStatus={sensorData.gasAlertStatus} 
               />
             </View>
           </View>
@@ -419,6 +441,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  gasMonitorContainer: {
+    marginTop: 20,
+  },
+  gasMonitorTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
   },
 });
 
