@@ -151,7 +151,7 @@ const unsigned long doorOpenDuration = 5000; // Door stays open for 5 seconds
 
 // MQTT timing variables
 unsigned long lastPublishTime = 0;
-const unsigned long publishInterval = 5000; // Publish to MQTT every 10 seconds
+const unsigned long publishInterval = 2000; // Publish to MQTT every 2 seconds
 
 // WiFi connection status
 bool wifiConnected = false;

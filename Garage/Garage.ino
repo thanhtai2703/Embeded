@@ -109,7 +109,7 @@ const unsigned long lightCheckInterval = 1000; // Check light every 1 second
 
 // MQTT timing variables
 unsigned long lastPublishTime = 0;
-const unsigned long publishInterval = 10000; // Publish to MQTT every 10 seconds
+const unsigned long publishInterval = 2000; // Publish to MQTT every 2 seconds
 
 // WiFi and MQTT connection status
 bool wifiConnected = false;
