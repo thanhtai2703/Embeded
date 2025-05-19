@@ -169,6 +169,10 @@ const HomeMenu: React.FC = () => {
   const handleSecurityPress = () => {
     navigation.navigate('Security');
   };
+  
+  const handlePasswordPress = () => {
+    navigation.navigate('Password');
+  };
 
   // Connect to MQTT and handle sensor data
   useEffect(() => {
@@ -299,6 +303,14 @@ const HomeMenu: React.FC = () => {
                 iconColor="#FF3B30"
                 showArrow={true}
                 onPress={handleSecurityPress}
+              />
+              
+              <DeviceRow 
+                name="Change Door Password" 
+                icon="key" 
+                iconColor="#007AFF" 
+                showArrow={true}
+                onPress={handlePasswordPress}
               />
             </View>
           </View>

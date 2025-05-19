@@ -6,6 +6,7 @@ import TemperatureDetails from '../screens/TemperatureDetails';
 import HumidityDetails from '../screens/HumidityDetails';
 import LightsScreen from '../screens/LightsScreen';
 import SecurityScreen from '../screens/SecurityScreen';
+import PasswordScreen from '../screens/PasswordScreen';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -13,6 +14,7 @@ export type RootStackParamList = {
   HumidityDetails: undefined;
   Lights: undefined;
   Security: undefined;
+  Password: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -31,6 +33,7 @@ const AppNavigator = () => {
         <Stack.Screen name="HumidityDetails" component={HumidityDetails} />
         <Stack.Screen name="Lights" component={LightsScreen} />
         <Stack.Screen name="Security" component={SecurityScreen} />
+        <Stack.Screen name="Password" component={PasswordScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

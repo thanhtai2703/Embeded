@@ -1,6 +1,7 @@
 import mqtt from 'mqtt';
 import { Buffer } from 'buffer';
 import 'react-native-url-polyfill/auto';
+import { StringOrCallback } from 'victory-core';
 
 // MQTT Connection Information
 const MQTT_BROKER = 'b5619a98.ala.asia-southeast1.emqxsl.com';
@@ -15,6 +16,7 @@ const MQTT_TOPIC_TEMP = 'sensors/temperature/room1';
 const MQTT_TOPIC_HUMIDITY = 'sensors/humidity/room1';
 // Control topics
 const MQTT_TOPIC_SECURITY_CONTROL = 'control/security/room1';
+const MQTT_TOPIC_PASSWORD_CONTROL = 'control/password/room1';
 const MQTT_TOPIC_GARAGE_LIGHT_CONTROL = 'control/garage/light';
 const MQTT_TOPIC_GARAGE_LIVING_ROOM_LIGHT = 'control/garage/livingroom';
 const MQTT_TOPIC_GARAGE_BEDROOM_LIGHT = 'control/garage/bedroom';
@@ -31,6 +33,7 @@ type MQTTMessage = {
   security_alarm?: string;
   timestamp?: string | number;
   unit?: string;
+  location?:string;
 };
 
 type MQTTCallback = (message: MQTTMessage) => void;
@@ -187,6 +190,24 @@ class MQTTService {
     const message = enabled ? 'ON' : 'OFF';
     this.client.publish(MQTT_TOPIC_GARAGE_BEDROOM_LIGHT, message, { qos: 1 });
     console.log(`Published bedroom light control message: ${message}`);
+  }
+
+  // Function to publish password change request
+  publishPasswordChange(currentPassword: string, newPassword: string): void {
+    if (!this.client || !this.isConnected) {
+      console.warn('Cannot publish: MQTT client not connected');
+      return;
+    }
+    
+    // Create JSON message with current and new password
+    const passwordData = {
+      current_password: currentPassword,
+      new_password: newPassword
+    };
+    
+    const message = JSON.stringify(passwordData);
+    this.client.publish(MQTT_TOPIC_PASSWORD_CONTROL, message, { qos: 1 });
+    console.log('Published password change request');
   }
 }
 

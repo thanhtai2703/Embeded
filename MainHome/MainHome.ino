@@ -72,6 +72,7 @@ const char* security_topic = "sensors/security/room1"; // New topic for security
 const char* sensors_topic = "sensors/all/room1";
 // Control topics
 const char* security_control_topic = "control/security/room1"; // Topic for receiving security control commands
+const char* password_control_topic = "control/password/room1"; // Topic for receiving password change commands
 
 // Keypad configuration
 #define ROW_NUM 4              // 4 rows
@@ -138,10 +139,11 @@ const unsigned long PERSON_DETECTION_THRESHOLD = 5000; // 5 seconds threshold fo
 #define LIGHT_THRESHOLD 3000    // Threshold for MH-series sensor (adjust as needed)
 
 // Password variables
-const char correctPassword[5] = "1234"; // 4-digit password + null terminator
+char correctPassword[5] = "1234"; // 4-digit password + null terminator (changed from const to allow updates)
 char enteredPassword[5] = "";           // Buffer to store entered password
 int passwordIndex = 0;                  // Current position in password entry
 bool doorOpen = false;                  // Door state
+bool passwordChanged = false;           // Flag to indicate password was changed
 
 // Timing variables
 unsigned long lastUpdateTime = 0;
@@ -182,6 +184,9 @@ void setup_wifi();
 void reconnect_mqtt();
 void publishSensorData();
 void mqtt_callback(char* topic, byte* payload, unsigned int length);
+
+// Password management function
+void changePassword(const char* newPassword);
 
 // Function to set up WiFi connection
 void setup_wifi() {
@@ -275,6 +280,64 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       updateDisplay();
     }
   }
+  // Check if this is a password change message
+  else if (strcmp(topic, password_control_topic) == 0) {
+    // Parse JSON message
+    StaticJsonDocument<200> doc;
+    DeserializationError error = deserializeJson(doc, message);
+    
+    if (error) {
+      Serial.print("deserializeJson() failed: ");
+      Serial.println(error.c_str());
+      return;
+    }
+    
+    // Extract current and new password
+    const char* currentPassword = doc["current_password"];
+    const char* newPassword = doc["new_password"];
+    
+    // Verify current password is correct
+    if (strcmp(currentPassword, correctPassword) == 0) {
+      // Change the password
+      changePassword(newPassword);
+      
+      // Show password changed message on display
+      display.clearDisplay();
+      display.setTextSize(1);
+      display.setCursor(0, 0);
+      display.println("ESP32 Smart Home");
+      display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
+      
+      display.setCursor(0, 25);
+      display.setTextSize(2);
+      display.println("PASSWORD");
+      display.println("CHANGED");
+      display.display();
+      delay(2000); // Show message for 2 seconds
+      
+      // Return to normal display
+      updateDisplay();
+    } else {
+      Serial.println("Password change failed: Current password incorrect");
+      
+      // Show error message on display
+      display.clearDisplay();
+      display.setTextSize(1);
+      display.setCursor(0, 0);
+      display.println("ESP32 Smart Home");
+      display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
+      
+      display.setCursor(0, 25);
+      display.setTextSize(2);
+      display.println("PASSWORD");
+      display.println("ERROR");
+      display.display();
+      delay(2000); // Show message for 2 seconds
+      
+      // Return to normal display
+      updateDisplay();
+    }
+  }
 }
 
 // Function to reconnect to MQTT broker
@@ -297,6 +360,11 @@ void reconnect_mqtt() {
       mqtt_client.subscribe(security_control_topic);
       Serial.print("Subscribed to topic: ");
       Serial.println(security_control_topic);
+      
+      // Subscribe to the password control topic
+      mqtt_client.subscribe(password_control_topic);
+      Serial.print("Subscribed to topic: ");
+      Serial.println(password_control_topic);
     } else {
       retry_count++;
       Serial.print("Failed to connect, rc=");
@@ -332,6 +400,7 @@ void publishSensorData() {
   jsonDoc["security_mode"] = securityModeEnabled ? "ON" : "OFF";
   jsonDoc["security_alarm"] = securityAlarmActive ? "ON" : "OFF";
   jsonDoc["distance"] = distance;
+  //jsonDoc["location"] = "mainhome"; // Add location tag to identify the source
 
   jsonDoc["timestamp"] = millis();
 
@@ -784,6 +853,33 @@ void displayPasswordError() {
   display.println("PASSWORD!");
   display.display();
   delay(2000); // Show error message for 2 seconds
+}
+
+// Function to change the door password
+void changePassword(const char* newPassword) {
+  // Validate new password (must be 4 digits)
+  if (strlen(newPassword) != 4) {
+    Serial.println("Password change failed: New password must be 4 digits");
+    return;
+  }
+  
+  // Check if new password contains only digits
+  for (int i = 0; i < 4; i++) {
+    if (newPassword[i] < '0' || newPassword[i] > '9') {
+      Serial.println("Password change failed: New password must contain only digits");
+      return;
+    }
+  }
+  
+  // Update the password
+  strncpy(correctPassword, newPassword, 4);
+  correctPassword[4] = '\0'; // Ensure null termination
+  
+  // Set flag to indicate password was changed
+  passwordChanged = true;
+  
+  Serial.print("Password changed to: ");
+  Serial.println(correctPassword);
 }
 
 // Function to open the door
