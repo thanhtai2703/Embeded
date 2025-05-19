@@ -181,13 +181,24 @@ const HomeMenu: React.FC = () => {
         mqttService.onMessage((message) => {
           console.log('Received MQTT message:', message);
           
+          // Check if the message contains temperature and humidity data
           if (message.temperature !== undefined && message.humidity !== undefined) {
-            setSensorData(prev => ({
-              ...prev,
-              temperature: `${message.temperature.toFixed(1)} °C`,
-              humidity: `${message.humidity.toFixed(1)} %`,
-              isLoading: false
-            }));
+            // Check the location to determine if we should update the display
+            // Default to 'MainHome' if location is not specified
+            const location = message.location || 'MainHome';
+            
+            // Only update if the message is from MainHome
+            // Use case-insensitive comparison for more reliable location matching
+            const locationLower = location.toLowerCase();
+            
+            if (locationLower === 'mainhome' || locationLower === 'main home' || locationLower === 'main' || !message.location) {
+              setSensorData(prev => ({
+                ...prev,
+                temperature: `${message.temperature.toFixed(1)} °C`,
+                humidity: `${message.humidity.toFixed(1)} %`,
+                isLoading: false
+              }));
+            }
           }
 
           // Handle gas alert data
