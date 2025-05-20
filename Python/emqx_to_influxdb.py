@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 
 import logging
 import os
@@ -32,7 +29,7 @@ class Config:
     MQTT_USERNAME = os.getenv("MQTT_USERNAME", "thanhtai")
     MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "thanhtai")
     MQTT_CLIENT_ID = os.getenv("MQTT_CLIENT_ID", f"python-mqtt-{int(time.time())}")
-    # Updated to include both MainHome and Garage topics
+    # Updated topic
     MQTT_TOPICS = os.getenv("MQTT_TOPICS", "sensors/all/room1,sensors/all/garage").split(",")
     MQTT_QOS = int(os.getenv("MQTT_QOS", 0))
     MQTT_CA_CERT = os.getenv("MQTT_CA_CERT", "C:\\Users\\taith\\Downloads\\emqxsl-ca.crt")
