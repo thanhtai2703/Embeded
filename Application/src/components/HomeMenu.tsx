@@ -8,6 +8,7 @@ import {
   Switch,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import mqttService from "../services/MQTTService";
@@ -320,13 +321,41 @@ const HomeMenu: React.FC = () => {
                 isEnabled={devices.garage}
                 onToggle={() => toggleDevice("garage")}
               />
-              <DeviceRow
-                name="Main door"
-                icon="home"
-                iconColor="#2196F3"
-                isEnabled={devices.mainDoor}
-                onToggle={() => toggleDevice("mainDoor")}
-              />
+              <TouchableOpacity
+                style={styles.deviceRow}
+                onPress={() => {
+                  // Open the main door via MQTT
+                  if (sensorData.isConnected) {
+                    mqttService.publishMainHomeDoorControl(true);
+                    // Show a temporary message that door is opening
+                    Alert.alert("Main Door", "Opening the door...");
+                  } else {
+                    Alert.alert("Connection Error", "Cannot open door: Not connected to the smart home system.");
+                  }
+                }}
+              >
+                <View style={styles.deviceInfo}>
+                  <Ionicons name="home" size={24} color="#2196F3" />
+                  <Text style={styles.deviceName}>Main door</Text>
+                </View>
+                <View style={styles.deviceControls}>
+                  <TouchableOpacity
+                    style={styles.doorButton}
+                    onPress={() => {
+                      // Open the main door via MQTT
+                      if (sensorData.isConnected) {
+                        mqttService.publishMainHomeDoorControl(true);
+                        // Show a temporary message that door is opening
+                        Alert.alert("Main Door", "Opening the door...");
+                      } else {
+                        Alert.alert("Connection Error", "Cannot open door: Not connected to the smart home system.");
+                      }
+                    }}
+                  >
+                    <Text style={styles.doorButtonText}>OPEN</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
             </View>
           </View>
           <View style={styles.securitySection}>
@@ -499,6 +528,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+  },
+  doorButton: {
+    backgroundColor: "#2196F3",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 5,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  doorButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
   },
   gasMonitorContainer: {
     marginTop: 20,
