@@ -12,6 +12,7 @@ const MQTT_CLIENT_ID = `react-native-mqtt-${Math.random().toString(16).substring
 
 // MQTT Topics - matching the topics used in MainHome.ino
 const MQTT_TOPIC_COMBINED = 'sensors/all/room1';
+const MQTT_TOPIC_COMBINED_2 ='sensors/all/garage';
 const MQTT_TOPIC_TEMP = 'sensors/temperature/room1';
 const MQTT_TOPIC_HUMIDITY = 'sensors/humidity/room1';
 // Control topics
@@ -20,6 +21,9 @@ const MQTT_TOPIC_PASSWORD_CONTROL = 'control/password/room1';
 const MQTT_TOPIC_GARAGE_LIGHT_CONTROL = 'control/garage/light';
 const MQTT_TOPIC_GARAGE_LIVING_ROOM_LIGHT = 'control/garage/livingroom';
 const MQTT_TOPIC_GARAGE_BEDROOM_LIGHT = 'control/garage/bedroom';
+// Door control topics
+const MQTT_TOPIC_MAINHOME_DOOR_CONTROL = 'control/door/mainhome';
+const MQTT_TOPIC_GARAGE_DOOR_CONTROL = 'control/door/garage';
 
 type MQTTMessage = {
   temperature?: number;
@@ -75,6 +79,7 @@ class MQTTService {
           
           // Subscribe to the topics
           this.subscribe(MQTT_TOPIC_COMBINED);
+          this.subscribe(MQTT_TOPIC_COMBINED_2);
           this.subscribe(MQTT_TOPIC_TEMP);
           this.subscribe(MQTT_TOPIC_HUMIDITY);
           
@@ -192,6 +197,30 @@ class MQTTService {
     console.log(`Published bedroom light control message: ${message}`);
   }
 
+  // Function to publish garage door control message
+  publishGarageDoorControl(open: boolean): void {
+    if (!this.client || !this.isConnected) {
+      console.warn('Cannot publish: MQTT client not connected');
+      return;
+    }
+    
+    const message = open ? 'OPEN' : 'CLOSE';
+    this.client.publish(MQTT_TOPIC_GARAGE_DOOR_CONTROL, message, { qos: 1 });
+    console.log(`Published garage door control message: ${message}`);
+  }
+
+  // Function to publish main home door control message
+  publishMainHomeDoorControl(open: boolean): void {
+    if (!this.client || !this.isConnected) {
+      console.warn('Cannot publish: MQTT client not connected');
+      return;
+    }
+    
+    const message = open ? 'OPEN' : 'CLOSE';
+    this.client.publish(MQTT_TOPIC_MAINHOME_DOOR_CONTROL, message, { qos: 1 });
+    console.log(`Published main home door control message: ${message}`);
+  }
+
   // Function to publish password change request
   publishPasswordChange(currentPassword: string, newPassword: string): void {
     if (!this.client || !this.isConnected) {
@@ -209,6 +238,11 @@ class MQTTService {
     this.client.publish(MQTT_TOPIC_PASSWORD_CONTROL, message, { qos: 1 });
     console.log('Published password change request');
   }
+
+  // Function to control MainHome door
+
+
+  // Function to control Garage door
 }
 
 // Create a singleton instance
