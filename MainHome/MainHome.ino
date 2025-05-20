@@ -74,6 +74,7 @@ const char* sensors_topic = "sensors/all/room1";
 // Control topics
 const char* security_control_topic = "control/security/room1"; // Topic for receiving security control commands
 const char* password_control_topic = "control/password/room1"; // Topic for receiving password change commands
+const char* door_control_topic = "control/door/mainhome"; // Topic for receiving door control commands
 
 // Keypad configuration
 #define ROW_NUM 4              // 4 rows
@@ -342,6 +343,54 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       updateDisplay();
     }
   }
+  // Check if this is a door control message
+  else if (strcmp(topic, door_control_topic) == 0) {
+    // Handle door control message
+    if (strcmp(message, "OPEN") == 0 && !doorOpen) {
+      // Open the door if it's currently closed
+      openDoor();
+      Serial.println("Door opened via MQTT");
+      
+      // Show door status on display
+      display.clearDisplay();
+      display.setTextSize(1);
+      display.setCursor(0, 0);
+      display.println("ESP32 Smart Home");
+      display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
+      
+      display.setCursor(0, 25);
+      display.setTextSize(2);
+      display.println("DOOR");
+      display.println("OPENED");
+      display.display();
+      delay(2000); // Show message for 2 seconds
+      
+      // Return to normal display
+      updateDisplay();
+    } 
+    else if (strcmp(message, "CLOSE") == 0 && doorOpen) {
+      // Close the door if it's currently open
+      closeDoor();
+      Serial.println("Door closed via MQTT");
+      
+      // Show door status on display
+      display.clearDisplay();
+      display.setTextSize(1);
+      display.setCursor(0, 0);
+      display.println("ESP32 Smart Home");
+      display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
+      
+      display.setCursor(0, 25);
+      display.setTextSize(2);
+      display.println("DOOR");
+      display.println("CLOSED");
+      display.display();
+      delay(2000); // Show message for 2 seconds
+      
+      // Return to normal display
+      updateDisplay();
+    }
+  }
 }
 
 // Function to reconnect to MQTT broker
@@ -369,6 +418,11 @@ void reconnect_mqtt() {
       mqtt_client.subscribe(password_control_topic);
       Serial.print("Subscribed to topic: ");
       Serial.println(password_control_topic);
+      
+      // Subscribe to the door control topic
+      mqtt_client.subscribe(door_control_topic);
+      Serial.print("Subscribed to topic: ");
+      Serial.println(door_control_topic);
     } else {
       retry_count++;
       Serial.print("Failed to connect, rc=");

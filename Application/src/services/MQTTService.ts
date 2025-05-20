@@ -21,6 +21,7 @@ const MQTT_TOPIC_PASSWORD_CONTROL = 'control/password/room1';
 const MQTT_TOPIC_GARAGE_LIGHT_CONTROL = 'control/garage/light';
 const MQTT_TOPIC_GARAGE_LIVING_ROOM_LIGHT = 'control/garage/livingroom';
 const MQTT_TOPIC_GARAGE_BEDROOM_LIGHT = 'control/garage/bedroom';
+const MQTT_TOPIC_HCSR04_CONTROL = 'control/garage/hcsr04';
 // Door control topics
 const MQTT_TOPIC_MAINHOME_DOOR_CONTROL = 'control/door/mainhome';
 const MQTT_TOPIC_GARAGE_DOOR_CONTROL = 'control/door/garage';
@@ -195,6 +196,18 @@ class MQTTService {
     const message = enabled ? 'ON' : 'OFF';
     this.client.publish(MQTT_TOPIC_GARAGE_BEDROOM_LIGHT, message, { qos: 1 });
     console.log(`Published bedroom light control message: ${message}`);
+  }
+
+  // Function to publish HC-SR04 sensor control message
+  publishHCSR04Control(enabled: boolean): void {
+    if (!this.client || !this.isConnected) {
+      console.warn('Cannot publish: MQTT client not connected');
+      return;
+    }
+    
+    const message = enabled ? 'ON' : 'OFF';
+    this.client.publish(MQTT_TOPIC_HCSR04_CONTROL, message, { qos: 1 });
+    console.log(`Published HC-SR04 control message: ${message}`);
   }
 
   // Function to publish garage door control message

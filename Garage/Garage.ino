@@ -7,6 +7,7 @@
 #include <WiFiClientSecure.h>  // For secure WiFi connection
 #include <DHT.h>               // DHT sensor library
 #include <ArduinoJson.h>       // JSON library for formatting data
+#include <Preferences.h>       // Preferences library for persistent storage
 
 // Pin definitions
 #define TRIG_PIN 5             // HC-SR04 trigger pin
@@ -72,6 +73,8 @@ const char* dht_topic = "sensors/dht11/garage";
 const char* light_control_topic = "control/garage/light"; // Topic for receiving light control commands
 const char* living_room_light_topic = "control/garage/livingroom"; // Topic for controlling living room LED
 const char* bedroom_light_topic = "control/garage/bedroom"; // Topic for controlling bedroom LED
+const char* door_control_topic = "control/door/garage"; // Topic for receiving door control commands
+const char* hcsr04_control_topic = "control/garage/hcsr04"; // Topic for enabling/disabling HC-SR04 sensor
 const char* combined_topic = "sensors/all/garage"; // Topic for InfluxDB Cloud integration
 
 // Initialize the OLED display
@@ -89,6 +92,9 @@ WiFiClientSecure espClient;
 // Initialize MQTT client
 PubSubClient mqtt_client(espClient);
 
+// Initialize Preferences for persistent storage
+Preferences preferences;
+
 // Variables
 float distance = 0.0;          // Distance measured by ultrasonic sensor
 float filteredDistance = 0.0;  // Filtered distance after debouncing
@@ -101,6 +107,7 @@ bool led2On = false;           // Second LED state
 bool livingRoomLedOn = false;  // Living room LED state
 bool bedroomLedOn = false;     // Bedroom LED state
 bool autoLightEnabled = false;  // Auto light control enabled by default
+bool hcsr04Enabled = true;     // HC-SR04 sensor enabled by default
 unsigned long doorOpenTime = 0; // Time when door was opened
 unsigned long lastDistanceCheckTime = 0; // Last time distance was checked
 const unsigned long distanceCheckInterval = 200; // Check distance every 200ms
@@ -143,6 +150,20 @@ void setup() {
   // Initialize serial communication for debugging
   Serial.begin(115200);
   Serial.println("ESP32 Automatic Garage System with DHT11");
+  
+  // Initialize Preferences for persistent storage
+  preferences.begin("garage", false); // false = RW mode
+  
+  // Load saved HC-SR04 sensor state from preferences if it exists
+  if (preferences.isKey("hcsr04")) {
+    hcsr04Enabled = preferences.getBool("hcsr04", true);
+    Serial.print("Loaded saved HC-SR04 state: ");
+    Serial.println(hcsr04Enabled ? "Enabled" : "Disabled");
+  } else {
+    // Save default state if no saved state exists
+    preferences.putBool("hcsr04", hcsr04Enabled);
+    Serial.println("Saved default HC-SR04 state to preferences");
+  }
   
   // Initialize HC-SR04 pins
   pinMode(TRIG_PIN, OUTPUT);
@@ -235,30 +256,38 @@ void loop() {
     lastDistanceCheckTime = currentTime;
     readUltrasonicSensor();
     
-    // Vehicle detection with debouncing
-    if (filteredDistance <= DISTANCE_THRESHOLD) {
-      if (!vehicleDetected) {
-        // First time detecting vehicle
-        vehicleDetected = true;
-        vehicleDetectionTime = currentTime;
-        Serial.println("Potential vehicle detected, starting debounce timer");
-      } else if (!doorOpen && (currentTime - vehicleDetectionTime >= VEHICLE_DEBOUNCE_TIME)) {
-        // Vehicle has been detected consistently for the debounce period
-        Serial.println("Vehicle confirmed! Opening door...");
-        openDoor();
-      }
-    } else {
-      // No vehicle detected
-      if (vehicleDetected) {
-        Serial.println("Vehicle no longer detected");
-        vehicleDetected = false;
-        
-        // Close the door immediately when vehicle moves away
-        if (doorOpen) {
-          Serial.println("Closing door immediately");
-          closeDoor();
+    // Only process vehicle detection if HC-SR04 sensor is enabled
+    if (hcsr04Enabled) {
+      // Vehicle detection with debouncing
+      if (filteredDistance <= DISTANCE_THRESHOLD) {
+        if (!vehicleDetected) {
+          // First time detecting vehicle
+          vehicleDetected = true;
+          vehicleDetectionTime = currentTime;
+          Serial.println("Potential vehicle detected, starting debounce timer");
+        } else if (!doorOpen && (currentTime - vehicleDetectionTime >= VEHICLE_DEBOUNCE_TIME)) {
+          // Vehicle has been detected consistently for the debounce period
+          Serial.println("Vehicle confirmed! Opening door...");
+          openDoor();
+        }
+      } else {
+        // No vehicle detected
+        if (vehicleDetected) {
+          Serial.println("Vehicle no longer detected");
+          vehicleDetected = false;
+          
+          // Close the door immediately when vehicle moves away
+          if (doorOpen) {
+            Serial.println("Closing door immediately");
+            closeDoor();
+          }
         }
       }
+    }
+    // If HC-SR04 is disabled, reset vehicle detection state
+    else if (vehicleDetected) {
+      vehicleDetected = false;
+      Serial.println("HC-SR04 sensor disabled, resetting vehicle detection state");
     }
   }
   
@@ -440,10 +469,14 @@ void reconnect_mqtt() {
       mqtt_client.subscribe(light_control_topic);
       mqtt_client.subscribe(living_room_light_topic);
       mqtt_client.subscribe(bedroom_light_topic);
+      mqtt_client.subscribe(door_control_topic);
+      mqtt_client.subscribe(hcsr04_control_topic);
       Serial.print("Subscribed to topics: ");
       Serial.println(light_control_topic);
       Serial.println(living_room_light_topic);
       Serial.println(bedroom_light_topic);
+      Serial.println(door_control_topic);
+      Serial.println(hcsr04_control_topic);
     } else {
       retry_count++;
       Serial.print("Failed to connect, rc=");
@@ -476,6 +509,7 @@ void publishDHTData() {
   jsonDoc["timestamp"] = millis();
   jsonDoc["location"] = "garage"; // Add location tag for InfluxDB
   jsonDoc["device"] = "ESP32-Garage"; // Add device identifier
+  jsonDoc["hcsr04_enabled"] = hcsr04Enabled ? "ON" : "OFF"; // Add HC-SR04 sensor state
   
   // Serialize JSON to a string
   char jsonBuffer[200];
@@ -593,6 +627,34 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       Serial.println("Bedroom light turned OFF");
     }
   }
+  // Handle door control topic
+  else if (String(topic) == door_control_topic) {
+    if (message == "OPEN" && !doorOpen) {
+      // Open the door if it's currently closed
+      openDoor();
+      Serial.println("Door opened via MQTT");
+      // The door will automatically close after DOOR_OPEN_TIME (5 seconds)
+      // This is handled in the main loop
+    } else if (message == "CLOSE" && doorOpen) {
+      // Close the door if it's currently open
+      closeDoor();
+      Serial.println("Door closed via MQTT");
+    }
+  }
+  // Handle HC-SR04 sensor control topic
+  else if (String(topic) == hcsr04_control_topic) {
+    if (message == "ON" && !hcsr04Enabled) {
+      hcsr04Enabled = true;
+      // Save state to preferences for persistence across reboots
+      preferences.putBool("hcsr04", hcsr04Enabled);
+      Serial.println("HC-SR04 sensor enabled via MQTT");
+    } else if (message == "OFF" && hcsr04Enabled) {
+      hcsr04Enabled = false;
+      // Save state to preferences for persistence across reboots
+      preferences.putBool("hcsr04", hcsr04Enabled);
+      Serial.println("HC-SR04 sensor disabled via MQTT");
+    }
+  }
 }
 
 // Function to publish light sensor data to MQTT broker
@@ -657,6 +719,7 @@ void updateDisplay() {
   static bool lastDisplayedAutoLightState = true; // Initialize with default value
   static bool lastDisplayedLivingRoomLedState = false; // Initialize with default value
   static bool lastDisplayedBedroomLedState = false; // Initialize with default value
+  static bool lastDisplayedHcsr04State = true; // Initialize with default value
   bool stateChanged = (abs(lastDisplayedDistance - filteredDistance) > 0.5) || 
                       (lastDisplayedDoorState != doorOpen) || 
                       (abs(lastDisplayedTemperature - temperature) > 0.1) || 
@@ -666,7 +729,8 @@ void updateDisplay() {
                       (lastDisplayedLed2State != led2On) ||
                       (lastDisplayedLivingRoomLedState != livingRoomLedOn) ||
                       (lastDisplayedBedroomLedState != bedroomLedOn) ||
-                      (lastDisplayedAutoLightState != autoLightEnabled);
+                      (lastDisplayedAutoLightState != autoLightEnabled) ||
+                      (lastDisplayedHcsr04State != hcsr04Enabled);
   
   static unsigned long lastFullUpdateTime = 0;
   unsigned long currentTime = millis();
@@ -684,6 +748,7 @@ void updateDisplay() {
     lastDisplayedLivingRoomLedState = livingRoomLedOn;
     lastDisplayedBedroomLedState = bedroomLedOn;
     lastDisplayedAutoLightState = autoLightEnabled;
+    lastDisplayedHcsr04State = hcsr04Enabled;
     lastFullUpdateTime = currentTime;
     
     // Clear the display
@@ -732,6 +797,10 @@ void updateDisplay() {
     display.print(autoLightEnabled ? "ON" : "OFF");
     
     // Display living room and bedroom LED status
+    display.setCursor(70, 32);
+    display.print("Auto Door:");
+    display.print(hcsr04Enabled ? "ON" : "OFF");
+    
     display.setCursor(70, 42);
     display.print("LR:");
     display.print(livingRoomLedOn ? "ON" : "OFF");

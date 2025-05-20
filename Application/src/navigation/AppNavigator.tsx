@@ -7,6 +7,7 @@ import HumidityDetails from '../screens/HumidityDetails';
 import LightsScreen from '../screens/LightsScreen';
 import SecurityScreen from '../screens/SecurityScreen';
 import PasswordScreen from '../screens/PasswordScreen';
+import GarageSettingsScreen from '../screens/GarageSettingsScreen';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -15,6 +16,7 @@ export type RootStackParamList = {
   Lights: undefined;
   Security: undefined;
   Password: undefined;
+  GarageSettings: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -34,6 +36,7 @@ const AppNavigator = () => {
         <Stack.Screen name="Lights" component={LightsScreen} />
         <Stack.Screen name="Security" component={SecurityScreen} />
         <Stack.Screen name="Password" component={PasswordScreen} />
+        <Stack.Screen name="GarageSettings" component={GarageSettingsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

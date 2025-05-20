@@ -314,13 +314,41 @@ const HomeMenu: React.FC = () => {
                 onPress={handleLightPress}
                 showArrow={true}
               />
-              <DeviceRow
-                name="Garage"
-                icon="car"
-                iconColor="#4CAF50"
-                isEnabled={devices.garage}
-                onToggle={() => toggleDevice("garage")}
-              />
+              <TouchableOpacity
+                style={styles.deviceRow}
+                onPress={() => {
+                  // Open the garage door via MQTT
+                  if (sensorData.isConnected) {
+                    mqttService.publishGarageDoorControl(true);
+                    // Show a temporary message that door is opening
+                    Alert.alert("Garage Door", "Opening the garage door...");
+                  } else {
+                    Alert.alert("Connection Error", "Cannot open garage door: Not connected to the smart home system.");
+                  }
+                }}
+              >
+                <View style={styles.deviceInfo}>
+                  <Ionicons name="car" size={24} color="#4CAF50" />
+                  <Text style={styles.deviceName}>Garage door</Text>
+                </View>
+                <View style={styles.deviceControls}>
+                  <TouchableOpacity
+                    style={styles.doorButton}
+                    onPress={() => {
+                      // Open the garage door via MQTT
+                      if (sensorData.isConnected) {
+                        mqttService.publishGarageDoorControl(true);
+                        // Show a temporary message that door is opening
+                        Alert.alert("Garage Door", "Opening the garage door...");
+                      } else {
+                        Alert.alert("Connection Error", "Cannot open garage door: Not connected to the smart home system.");
+                      }
+                    }}
+                  >
+                    <Text style={styles.doorButtonText}>OPEN</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.deviceRow}
                 onPress={() => {
@@ -375,6 +403,14 @@ const HomeMenu: React.FC = () => {
                 iconColor="#007AFF"
                 showArrow={true}
                 onPress={handlePasswordPress}
+              />
+              
+              <DeviceRow
+                name="Garage Settings"
+                icon="car"
+                iconColor="#4CAF50"
+                showArrow={true}
+                onPress={() => navigation.navigate("GarageSettings")}
               />
             </View>
           </View>
