@@ -333,7 +333,7 @@ const HomeMenu: React.FC = () => {
                 </View>
                 <View style={styles.deviceControls}>
                   <TouchableOpacity
-                    style={styles.doorButton}
+                    style={[styles.doorButton, styles.doorButtonOpen]}
                     onPress={() => {
                       // Open the garage door via MQTT
                       if (sensorData.isConnected) {
@@ -346,6 +346,21 @@ const HomeMenu: React.FC = () => {
                     }}
                   >
                     <Text style={styles.doorButtonText}>OPEN</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.doorButton, styles.doorButtonClose]}
+                    onPress={() => {
+                      // Close the garage door via MQTT
+                      if (sensorData.isConnected) {
+                        mqttService.publishGarageDoorControl(false);
+                        // Show a temporary message that door is closing
+                        Alert.alert("Garage Door", "Closing the garage door...");
+                      } else {
+                        Alert.alert("Connection Error", "Cannot close garage door: Not connected to the smart home system.");
+                      }
+                    }}
+                  >
+                    <Text style={styles.doorButtonText}>CLOSE</Text>
                   </TouchableOpacity>
                 </View>
               </TouchableOpacity>
@@ -368,7 +383,7 @@ const HomeMenu: React.FC = () => {
                 </View>
                 <View style={styles.deviceControls}>
                   <TouchableOpacity
-                    style={styles.doorButton}
+                    style={[styles.doorButton, styles.doorButtonOpen]}
                     onPress={() => {
                       // Open the main door via MQTT
                       if (sensorData.isConnected) {
@@ -381,6 +396,21 @@ const HomeMenu: React.FC = () => {
                     }}
                   >
                     <Text style={styles.doorButtonText}>OPEN</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.doorButton, styles.doorButtonClose]}
+                    onPress={() => {
+                      // Close the main door via MQTT
+                      if (sensorData.isConnected) {
+                        mqttService.publishMainHomeDoorControl(false);
+                        // Show a temporary message that door is closing
+                        Alert.alert("Main Door", "Closing the door...");
+                      } else {
+                        Alert.alert("Connection Error", "Cannot close door: Not connected to the smart home system.");
+                      }
+                    }}
+                  >
+                    <Text style={styles.doorButtonText}>CLOSE</Text>
                   </TouchableOpacity>
                 </View>
               </TouchableOpacity>
@@ -566,12 +596,18 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   doorButton: {
-    backgroundColor: "#2196F3",
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 5,
     justifyContent: "center",
     alignItems: "center",
+    marginHorizontal: 4,
+  },
+  doorButtonOpen: {
+    backgroundColor: "#4CAF50", // Green color for open
+  },
+  doorButtonClose: {
+    backgroundColor: "#F44336", // Red color for close
   },
   doorButtonText: {
     color: "#fff",
