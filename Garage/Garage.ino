@@ -755,60 +755,30 @@ void updateDisplay() {
     display.clearDisplay();
     
     // Display title
-    display.setTextSize(1);
+    display.setTextSize(1.2);
     display.setCursor(0, 0);
-    display.println("ESP32 Garage System");
+    display.println("Garage System");
     display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
-    
-    // Display distance
-    display.setCursor(0, 12);
-    display.print("Distance: ");
-    display.print(filteredDistance, 1);
-    display.println(" cm");
-    
     // Display door status
-    display.setCursor(0, 22);
+    display.setCursor(0, 12);
     display.print("Door: ");
     display.println(doorOpen ? "OPEN" : "CLOSED");
     
-    // Display vehicle detection status
-    display.setCursor(0, 32);
-    display.print("Vehicle: ");
-    display.println(vehicleDetected ? "DETECTED" : "NONE");
-    
     // Display temperature and humidity
-    display.setCursor(0, 42);
+    display.setCursor(0, 22);
     display.print("Temp: ");
     display.print(temperature, 1);
     display.println(" C");
     
-    display.setCursor(0, 52);
+    display.setCursor(0, 32);
     display.print("Humidity: ");
     display.print(humidity, 1);
     display.println(" %");
     
     // Display light level and LED status on a new line
-    display.setCursor(0, 62);
-    display.print("L:");
-    display.print(lightValue);
-    display.print(" LED1:");
-    display.print(ledOn ? "ON" : "OFF");
-    display.print(" Auto:");
+    display.setCursor(0, 42);
+    display.print("Automatic Light:");
     display.print(autoLightEnabled ? "ON" : "OFF");
-    
-    // Display living room and bedroom LED status
-    display.setCursor(70, 32);
-    display.print("Auto Door:");
-    display.print(hcsr04Enabled ? "ON" : "OFF");
-    
-    display.setCursor(70, 42);
-    display.print("LR:");
-    display.print(livingRoomLedOn ? "ON" : "OFF");
-    
-    display.setCursor(70, 52);
-    display.print("BR:");
-    display.print(bedroomLedOn ? "ON" : "OFF");
-    
     // Update the display
     display.display();
   }

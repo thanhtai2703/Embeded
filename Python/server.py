@@ -1,4 +1,3 @@
-
 import logging
 import os
 import json
@@ -20,6 +19,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+app = Flask(__name__)
+CORS(app)
 
 # Configuration
 class Config:
@@ -41,6 +42,36 @@ class Config:
     INFLUXDB_ORG = os.getenv("INFLUXDB_ORG", "Embeded")
     INFLUXDB_BUCKET = os.getenv("INFLUXDB_BUCKET", "DHT11")
 
+# Global instance of EMQXToInfluxDB
+emqx_instance = None
+
+def initialize_emqx():
+    global emqx_instance
+    if emqx_instance is None:
+        try:
+            config = Config()
+            emqx_instance = EMQXToInfluxDB(config)
+            
+            # Set up MQTT and InfluxDB connections
+            if not emqx_instance.setup_mqtt() or not emqx_instance.setup_influxdb():
+                logger.error("Failed to set up connections.")
+                return False
+
+            # Start MQTT client loop in a separate thread
+            mqtt_thread = threading.Thread(target=emqx_instance.mqtt_client.loop_forever)
+            mqtt_thread.daemon = True
+            mqtt_thread.start()
+            logger.info("EMQX instance initialized successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to initialize EMQX instance: {e}")
+            return False
+    return True
+
+# Initialize when the app starts
+@app.before_first_request
+def before_first_request():
+    initialize_emqx()
 
 class EMQXToInfluxDB:
     def __init__(self, config: Config):
@@ -227,74 +258,49 @@ class EMQXToInfluxDB:
         """
         Start a Flask API server to serve historical data
         """
-        app = Flask(__name__)
-        CORS(app)  # Enable CORS for all routes
+        app.run(host=host, port=port)
 
-        @app.route('/api/temperature/history', methods=['GET'])
-        def temperature_history():
-            hours = request.args.get('hours', default=24, type=int)
-            location = request.args.get('location', default=None, type=str)
-            data = self.get_historical_data('temperature', hours, location)
-            return jsonify({'data': data})
+# Flask routes
+@app.route('/api/temperature/history', methods=['GET'])
+def temperature_history():
+    if emqx_instance is None and not initialize_emqx():
+        return jsonify({'error': 'Server not initialized'}), 500
+    hours = request.args.get('hours', default=24, type=int)
+    location = request.args.get('location', default=None, type=str)
+    data = emqx_instance.get_historical_data('temperature', hours, location)
+    return jsonify({'data': data})
 
-        @app.route('/api/humidity/history', methods=['GET'])
-        def humidity_history():
-            hours = request.args.get('hours', default=24, type=int)
-            location = request.args.get('location', default=None, type=str)
-            data = self.get_historical_data('humidity', hours, location)
-            return jsonify({'data': data})
+@app.route('/api/humidity/history', methods=['GET'])
+def humidity_history():
+    if emqx_instance is None and not initialize_emqx():
+        return jsonify({'error': 'Server not initialized'}), 500
+    hours = request.args.get('hours', default=24, type=int)
+    location = request.args.get('location', default=None, type=str)
+    data = emqx_instance.get_historical_data('humidity', hours, location)
+    return jsonify({'data': data})
 
-        @app.route('/api/locations', methods=['GET'])
-        def get_locations():
-            return jsonify({
-                'locations': ['MainHome', 'Garage']
-            })
+@app.route('/api/locations', methods=['GET'])
+def get_locations():
+    return jsonify({
+        'locations': ['MainHome', 'Garage']
+    })
 
-        @app.route('/api/health', methods=['GET'])
-        def health_check():
-            return jsonify({
-                'status': 'ok',
-                'mqtt_connected': self.connected_to_mqtt,
-                'influxdb_connected': self.connected_to_influxdb
-            })
-
-        logger.info(f"Starting API server on {host}:{port}")
-        app.run(host=host, port=port, debug=False, threaded=True)
-
-    def run(self):
-        if not self.setup_mqtt():
-            logger.error("Failed to set up MQTT client, exiting")
-            return
-        if not self.setup_influxdb():
-            logger.error("Failed to set up InfluxDB client, exiting")
-            return
-
-        # Start MQTT client in a separate thread
-        self.mqtt_client.loop_start()
-
-        # Start API server in a separate thread
-        api_thread = threading.Thread(target=self.start_api_server)
-        api_thread.daemon = True
-        api_thread.start()
-
-        try:
-            while True:
-                time.sleep(10)  # Keep the script running
-        except KeyboardInterrupt:
-            logger.info("Received keyboard interrupt, shutting down")
-        finally:
-            self.mqtt_client.loop_stop()
-            self.mqtt_client.disconnect()
-            if self.influxdb_client:
-                self.influxdb_client.close()
-            logger.info("Shutdown complete")
-
+@app.route('/health', methods=['GET'])
+def health_check():
+    if emqx_instance is None and not initialize_emqx():
+        return jsonify({'status': 'error', 'message': 'Server not initialized'}), 500
+    
+    status = {
+        'mqtt_connected': emqx_instance.connected_to_mqtt,
+        'influxdb_connected': emqx_instance.connected_to_influxdb,
+        'timestamp': datetime.utcnow().isoformat()
+    }
+    return jsonify(status)
 
 def main():
-    config = Config()
-    emqx_to_influxdb = EMQXToInfluxDB(config)
-    emqx_to_influxdb.run()
+    if initialize_emqx():
+        # Start the API server
+        app.run(host='0.0.0.0', port=5000)
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

@@ -249,7 +249,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       display.clearDisplay();
       display.setTextSize(1);
       display.setCursor(0, 0);
-      display.println("ESP32 Smart Home");
+      display.println("Smart Home");
       display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
       
       display.setCursor(0, 25);
@@ -271,7 +271,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       display.clearDisplay();
       display.setTextSize(1);
       display.setCursor(0, 0);
-      display.println("ESP32 Smart Home");
+      display.println("Smart Home");
       display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
       
       display.setCursor(0, 25);
@@ -310,7 +310,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       display.clearDisplay();
       display.setTextSize(1);
       display.setCursor(0, 0);
-      display.println("ESP32 Smart Home");
+      display.println("Smart Home");
       display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
       
       display.setCursor(0, 25);
@@ -329,7 +329,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       display.clearDisplay();
       display.setTextSize(1);
       display.setCursor(0, 0);
-      display.println("ESP32 Smart Home");
+      display.println("Smart Home");
       display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
       
       display.setCursor(0, 25);
@@ -355,7 +355,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       display.clearDisplay();
       display.setTextSize(1);
       display.setCursor(0, 0);
-      display.println("ESP32 Smart Home");
+      display.println("Smart Home");
       display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
       
       display.setCursor(0, 25);
@@ -377,7 +377,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       display.clearDisplay();
       display.setTextSize(1);
       display.setCursor(0, 0);
-      display.println("ESP32 Smart Home");
+      display.println("Smart Home");
       display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
       
       display.setCursor(0, 25);
@@ -520,7 +520,7 @@ void setup() {
   display.setTextSize(1);
   display.setTextColor(SH110X_WHITE);
   display.setCursor(0, 0);
-  display.println("ESP32 Smart Home");
+  display.println("Smart Home");
   display.println("Initializing...");
   display.display();
   delay(2000);
@@ -572,7 +572,7 @@ void setup() {
   // Display welcome message
   display.clearDisplay();
   display.setCursor(0, 0);
-  display.println("ESP32 Smart Home");
+  display.println("Smart Home");
   display.println("System Ready");
 }
 
@@ -608,7 +608,7 @@ void loop() {
         display.clearDisplay();
         display.setTextSize(1);
         display.setCursor(0, 0);
-        display.println("ESP32 Smart Home");
+        display.println("Smart Home");
         display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
         
         display.setCursor(0, 25);
@@ -802,7 +802,7 @@ void updateDisplay() {
   // Display title
   display.setTextSize(1);
   display.setCursor(0, 0);
-  display.println("ESP32 Smart Home");
+  display.println("Smart Home");
   display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
 
   // Display temperature
@@ -898,7 +898,7 @@ void updatePasswordDisplay() {
   display.clearDisplay();
   display.setTextSize(1);
   display.setCursor(0, 0);
-  display.println("ESP32 Smart Home");
+  display.println("Smart Home");
   display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
 
   display.setCursor(0, 20);
@@ -919,7 +919,7 @@ void displayPasswordError() {
   display.clearDisplay();
   display.setTextSize(1);
   display.setCursor(0, 0);
-  display.println("ESP32 Smart Home");
+  display.println("Smart Home");
   display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
 
   display.setCursor(0, 25);
@@ -973,7 +973,7 @@ void openDoor() {
   display.clearDisplay();
   display.setTextSize(1);
   display.setCursor(0, 0);
-  display.println("ESP32 Smart Home");
+  display.println("Smart Home");
   display.drawLine(0, 10, display.width(), 10, SH110X_WHITE);
 
   display.setCursor(0, 25);

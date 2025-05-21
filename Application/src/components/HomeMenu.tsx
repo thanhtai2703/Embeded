@@ -221,13 +221,12 @@ const HomeMenu: React.FC = () => {
             message.humidity !== undefined
           ) {
             // Check the location to determine if we should update the display
-            // Default to 'MainHome' if location is not specified
-            const location = message.location || "MainHome";
-
-            // Only update if the message is from MainHome
+            const location = message.location || "";
             const locationLower = location.toLowerCase();
-
-            if (locationLower === "mainhome" || !message.location) {
+            
+            // Update if the message is from MainHome or if location is not specified
+            // The topic MQTT_TOPIC_COMBINED ('sensors/all/room1') is from MainHome
+            if (locationLower === "mainhome" || !message.location || locationLower === "") {
               setSensorData((prev) => ({
                 ...prev,
                 temperature: `${message.temperature.toFixed(1)} °C`,

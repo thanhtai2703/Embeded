@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
   },
   timeRangeSelector: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+   // justifyContent: 'space-around',
     marginTop: 5,
   },
   timeButton: {

@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: python-mqtt-influxdb
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn server:app
+    envVars:
+      - key: MQTT_BROKER
+        value: b5619a98.ala.asia-southeast1.emqxsl.com
+      - key: MQTT_PORT
+        value: 8883
+      - key: MQTT_USERNAME
+        value: thanhtai
+      - key: MQTT_PASSWORD
+        value: thanhtai
+      - key: INFLUXDB_URL
+        value: https://us-east-1-1.aws.cloud2.influxdata.com
+      - key: INFLUXDB_TOKEN
+        value: _8nfCZ3FNhXZKoexUIQVQG10wVg7Hkmq6ZbAEEE2-NMwHfC-bX3xofJEaySvgAF5mEr30Ba_TqLaKZQUcYs78Q==
+      - key: INFLUXDB_ORG
+        value: Embeded
+      - key: INFLUXDB_BUCKET
+        value: DHT11
+      - key: MQTT_CA_CERT
+        value: emqxsl-ca.crt
