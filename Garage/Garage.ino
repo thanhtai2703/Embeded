@@ -22,6 +22,7 @@
 #define LED_PIN2 14            // Second LED pin for night light
 #define LIVING_ROOM_LED_PIN 32 // LED pin for living room light
 #define BEDROOM_LED_PIN 33     // LED pin for bedroom light
+#define GARAGE_LIGHT_PIN 25    // LED pin for garage light
 
 // Constants
 #define DISTANCE_THRESHOLD 30  // Distance threshold in cm to trigger door opening
@@ -73,6 +74,9 @@ const char* dht_topic = "sensors/dht11/garage";
 const char* light_control_topic = "control/garage/light"; // Topic for receiving light control commands
 const char* living_room_light_topic = "control/garage/livingroom"; // Topic for controlling living room LED
 const char* bedroom_light_topic = "control/garage/bedroom"; // Topic for controlling bedroom LED
+const char* garage_door_led_topic = "control/garage/door_led"; // Topic for controlling garage door LED (pin 2)
+const char* main_door_led_topic = "control/garage/main_door_led"; // Topic for controlling main door LED (pin 14)
+const char* garage_light_topic = "control/garage/garage_light"; // Topic for controlling garage light
 const char* door_control_topic = "control/door/garage"; // Topic for receiving door control commands
 const char* hcsr04_control_topic = "control/garage/hcsr04"; // Topic for enabling/disabling HC-SR04 sensor
 const char* combined_topic = "sensors/all/garage"; // Topic for InfluxDB Cloud integration
@@ -99,6 +103,7 @@ Preferences preferences;
 float distance = 0.0;          // Distance measured by ultrasonic sensor
 float filteredDistance = 0.0;  // Filtered distance after debouncing
 bool doorOpen = false;         // Door state
+bool doorOpenedByApp = false;  // Flag to track if door was opened by app command
 float temperature = 0.0;       // Temperature from DHT11
 float humidity = 0.0;          // Humidity from DHT11
 int lightValue = 0;            // Light sensor reading
@@ -106,6 +111,7 @@ bool ledOn = false;            // LED state
 bool led2On = false;           // Second LED state
 bool livingRoomLedOn = false;  // Living room LED state
 bool bedroomLedOn = false;     // Bedroom LED state
+bool garageLightOn = false;    // Garage light LED state
 bool autoLightEnabled = false;  // Auto light control enabled by default
 bool hcsr04Enabled = true;     // HC-SR04 sensor enabled by default
 unsigned long doorOpenTime = 0; // Time when door was opened
@@ -180,10 +186,12 @@ void setup() {
   pinMode(LED_PIN2, OUTPUT);
   pinMode(LIVING_ROOM_LED_PIN, OUTPUT);
   pinMode(BEDROOM_LED_PIN, OUTPUT);
+  pinMode(GARAGE_LIGHT_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW); // LED off initially
   digitalWrite(LED_PIN2, LOW); // Second LED off initially
   digitalWrite(LIVING_ROOM_LED_PIN, LOW); // Living room LED off initially
   digitalWrite(BEDROOM_LED_PIN, LOW); // Bedroom LED off initially
+  digitalWrite(GARAGE_LIGHT_PIN, LOW); // Garage light LED off initially
   Serial.println("Light sensor and LEDs initialized");
   
   // Initialize the OLED display
@@ -277,8 +285,9 @@ void loop() {
           vehicleDetected = false;
           
           // Close the door immediately when vehicle moves away
-          if (doorOpen) {
-            Serial.println("Closing door immediately");
+          // BUT only if the door wasn't opened by the app
+          if (doorOpen && !doorOpenedByApp) {
+            Serial.println("Closing door immediately - vehicle moved away");
             closeDoor();
           }
         }
@@ -310,8 +319,11 @@ void loop() {
   // Note: The main door closing logic is now in the vehicle detection section
   // This is just a fallback for the minimum open time
   if (doorOpen && currentTime - doorOpenTime >= DOOR_OPEN_TIME) {
-    // Only close the door if no vehicle is detected and minimum open time has passed
-    if (filteredDistance > DISTANCE_THRESHOLD) {
+    // Only close the door if:
+    // 1. No vehicle is detected
+    // 2. Minimum open time has passed
+    // 3. Door was NOT opened by app command (important!)
+    if (filteredDistance > DISTANCE_THRESHOLD && !doorOpenedByApp) {
       Serial.println("Minimum door open time elapsed. Closing door...");
       closeDoor();
     }
@@ -397,12 +409,16 @@ void openDoor() {
   // Move servo to open position
   garageDoorServo.write(DOOR_OPEN_ANGLE);
   
+  // Note: doorOpenedByApp flag is set in the MQTT callback
+  // when door is opened via app, not here
   Serial.println("Door opened");
 }
 
 // Function to close the garage door
 void closeDoor() {
   doorOpen = false;
+  // Always reset the app control flag when closing the door
+  doorOpenedByApp = false;
   
   // Move servo to closed position
   garageDoorServo.write(DOOR_CLOSED_ANGLE);
@@ -469,6 +485,9 @@ void reconnect_mqtt() {
       mqtt_client.subscribe(light_control_topic);
       mqtt_client.subscribe(living_room_light_topic);
       mqtt_client.subscribe(bedroom_light_topic);
+      mqtt_client.subscribe(garage_door_led_topic);
+      mqtt_client.subscribe(main_door_led_topic);
+      mqtt_client.subscribe(garage_light_topic);
       mqtt_client.subscribe(door_control_topic);
       mqtt_client.subscribe(hcsr04_control_topic);
       Serial.print("Subscribed to topics: ");
@@ -547,28 +566,40 @@ void handleLightControl() {
   // Only control lights automatically if auto light is enabled
   if (autoLightEnabled) {
     // If light level is below threshold (darker), turn on LEDs
-    if (lightValue > LIGHT_THRESHOLD && (!ledOn || !led2On)) {
-      digitalWrite(LED_PIN, HIGH);
-      digitalWrite(LED_PIN2, HIGH);
-      ledOn = true;
-      led2On = true;
-      Serial.println("LEDs turned ON due to low light");
+    // But only if they haven't been manually controlled
+    if (lightValue > LIGHT_THRESHOLD) {
+      // Only control the LEDs if they haven't been manually controlled
+      // through the MQTT topics garage_door_led_topic and main_door_led_topic
+      if (!ledOn) {
+        digitalWrite(LED_PIN, HIGH);
+        ledOn = true;
+        Serial.println("Garage door LED turned ON due to low light");
+      }
+      if (!led2On) {
+        digitalWrite(LED_PIN2, HIGH);
+        led2On = true;
+        Serial.println("Main door LED turned ON due to low light");
+      }
     }
     // If light level is above threshold (brighter), turn off LEDs
-    else if (lightValue <= LIGHT_THRESHOLD && (ledOn || led2On)) {
-      digitalWrite(LED_PIN, LOW);
-      digitalWrite(LED_PIN2, LOW);
-      ledOn = false;
-      led2On = false;
-      Serial.println("LEDs turned OFF due to sufficient light");
+    else if (lightValue <= LIGHT_THRESHOLD) {
+      // Only control the LEDs if they haven't been manually controlled
+      if (ledOn) {
+        digitalWrite(LED_PIN, LOW);
+        ledOn = false;
+        Serial.println("Garage door LED turned OFF due to sufficient light");
+      }
+      if (led2On) {
+        digitalWrite(LED_PIN2, LOW);
+        led2On = false;
+        Serial.println("Main door LED turned OFF due to sufficient light");
+      }
     }
   }
-  // If auto light is disabled, ensure LEDs are off
-  else if (!autoLightEnabled && (ledOn || led2On)) {
-    digitalWrite(LED_PIN, LOW);
-    digitalWrite(LED_PIN2, LOW);
-    ledOn = false;
-    led2On = false;
+  // If auto light is disabled, ensure LEDs are off unless manually controlled
+  else if (!autoLightEnabled) {
+    // We don't automatically turn off LEDs here anymore
+    // as they might be manually controlled
   }
 }
 
@@ -595,12 +626,9 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     } else if (message == "OFF") {
       autoLightEnabled = false;
       Serial.println("Auto light control disabled");
-      // Turn off LEDs when auto light is disabled
-      digitalWrite(LED_PIN, LOW);
-      digitalWrite(LED_PIN2, LOW);
-      ledOn = false;
-      led2On = false;
-      Serial.println("LEDs turned OFF due to auto light being disabled");
+      // We no longer automatically turn off LEDs when auto light is disabled
+      // This allows manual control to work independently of auto light setting
+      Serial.println("Auto light control disabled - manual LED control still active");
     }
   }
   // Handle living room light control topic
@@ -627,18 +655,57 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       Serial.println("Bedroom light turned OFF");
     }
   }
+  // Handle garage door LED control topic (pin 2)
+  else if (String(topic) == garage_door_led_topic) {
+    if (message == "ON") {
+      digitalWrite(LED_PIN, HIGH);
+      ledOn = true;
+      Serial.println("Garage door LED turned ON");
+    } else if (message == "OFF") {
+      digitalWrite(LED_PIN, LOW);
+      ledOn = false;
+      Serial.println("Garage door LED turned OFF");
+    }
+  }
+  // Handle main door LED control topic (pin 14)
+  else if (String(topic) == main_door_led_topic) {
+    if (message == "ON") {
+      digitalWrite(LED_PIN2, HIGH);
+      led2On = true;
+      Serial.println("Main door LED turned ON");
+    } else if (message == "OFF") {
+      digitalWrite(LED_PIN2, LOW);
+      led2On = false;
+      Serial.println("Main door LED turned OFF");
+    }
+  }
+  // Handle garage light control topic
+  else if (String(topic) == garage_light_topic) {
+    if (message == "ON") {
+      digitalWrite(GARAGE_LIGHT_PIN, HIGH);
+      garageLightOn = true;
+      Serial.println("Garage light turned ON");
+    } else if (message == "OFF") {
+      digitalWrite(GARAGE_LIGHT_PIN, LOW);
+      garageLightOn = false;
+      Serial.println("Garage light turned OFF");
+    }
+  }
   // Handle door control topic
   else if (String(topic) == door_control_topic) {
     if (message == "OPEN" && !doorOpen) {
       // Open the door if it's currently closed
       openDoor();
-      Serial.println("Door opened via MQTT");
-      // The door will automatically close after DOOR_OPEN_TIME (5 seconds)
-      // This is handled in the main loop
+      // Set flag to indicate door was opened by app command
+      doorOpenedByApp = true;
+      Serial.println("Door opened via MQTT app command");
+      // Door will remain open until explicitly closed by app
     } else if (message == "CLOSE" && doorOpen) {
       // Close the door if it's currently open
       closeDoor();
-      Serial.println("Door closed via MQTT");
+      // Reset the app control flag
+      doorOpenedByApp = false;
+      Serial.println("Door closed via MQTT app command");
     }
   }
   // Handle HC-SR04 sensor control topic
@@ -668,8 +735,8 @@ void publishLightData() {
   // Create a JSON document for the light data
   StaticJsonDocument<200> jsonDoc;
   jsonDoc["light"] = lightValue;
-  jsonDoc["led_status"] = ledOn ? "ON" : "OFF";
-  jsonDoc["led2_status"] = led2On ? "ON" : "OFF";
+  jsonDoc["garage_door_led"] = ledOn ? "ON" : "OFF"; // Renamed for clarity (LED_PIN - pin 2)
+  jsonDoc["main_door_led"] = led2On ? "ON" : "OFF"; // Renamed for clarity (LED_PIN2 - pin 14)
   jsonDoc["living_room_led"] = livingRoomLedOn ? "ON" : "OFF";
   jsonDoc["bedroom_led"] = bedroomLedOn ? "ON" : "OFF";
   jsonDoc["auto_light"] = autoLightEnabled ? "ON" : "OFF";

@@ -13,6 +13,9 @@ const LightsScreen: React.FC = () => {
   const [lights, setLights] = useState({
     livingRoom: false,
     bedroom: false,
+    garageDoor: false,  // LED at pin 2 (garage door)
+    mainDoor: false,    // LED at pin 14 (main door)
+    garageLight: false, // New garage light
   });
   const [AutoLight, setAutoLight] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -30,6 +33,12 @@ const LightsScreen: React.FC = () => {
         mqttService.publishLivingRoomLightControl(newValue);
       } else if (light === 'bedroom') {
         mqttService.publishBedroomLightControl(newValue);
+      } else if (light === 'garageDoor') {
+        mqttService.publishGarageDoorLedControl(newValue);
+      } else if (light === 'mainDoor') {
+        mqttService.publishMainDoorLedControl(newValue);
+      } else if (light === 'garageLight') {
+        mqttService.publishGarageLightControl(newValue);
       }
     }
   };
@@ -93,6 +102,45 @@ const LightsScreen: React.FC = () => {
               onValueChange={() => toggleLight('bedroom')}
               trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
               thumbColor="#fff"
+            />
+          </View>
+          <View style={styles.lightRow}>
+            <View style={styles.lightInfo}>
+              <Ionicons name="car-sport" size={24} color="#333" />
+              <Text style={styles.lightName}>Garage Door Light</Text>
+            </View>
+            <Switch
+              value={lights.garageDoor}
+              onValueChange={() => toggleLight('garageDoor')}
+              trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
+              thumbColor="#fff"
+              disabled={!isConnected}
+            />
+          </View>
+          <View style={styles.lightRow}>
+            <View style={styles.lightInfo}>
+              <Ionicons name="home" size={24} color="#333" />
+              <Text style={styles.lightName}>Main Door Light</Text>
+            </View>
+            <Switch
+              value={lights.mainDoor}
+              onValueChange={() => toggleLight('mainDoor')}
+              trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
+              thumbColor="#fff"
+              disabled={!isConnected}
+            />
+          </View>
+          <View style={styles.lightRow}>
+            <View style={styles.lightInfo}>
+              <Ionicons name="flashlight" size={24} color="#333" />
+              <Text style={styles.lightName}>Garage Light</Text>
+            </View>
+            <Switch
+              value={lights.garageLight}
+              onValueChange={() => toggleLight('garageLight')}
+              trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
+              thumbColor="#fff"
+              disabled={!isConnected}
             />
           </View>
           <View style={styles.lightRow}>

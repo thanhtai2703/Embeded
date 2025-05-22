@@ -21,6 +21,9 @@ const MQTT_TOPIC_PASSWORD_CONTROL = 'control/password/room1';
 const MQTT_TOPIC_GARAGE_LIGHT_CONTROL = 'control/garage/light';
 const MQTT_TOPIC_GARAGE_LIVING_ROOM_LIGHT = 'control/garage/livingroom';
 const MQTT_TOPIC_GARAGE_BEDROOM_LIGHT = 'control/garage/bedroom';
+const MQTT_TOPIC_GARAGE_DOOR_LED = 'control/garage/door_led'; // New topic for garage door LED (pin 2)
+const MQTT_TOPIC_MAIN_DOOR_LED = 'control/garage/main_door_led'; // New topic for main door LED (pin 14)
+const MQTT_TOPIC_GARAGE_LIGHT = 'control/garage/garage_light'; // New topic for garage light
 const MQTT_TOPIC_HCSR04_CONTROL = 'control/garage/hcsr04';
 // Door control topics
 const MQTT_TOPIC_MAINHOME_DOOR_CONTROL = 'control/door/mainhome';
@@ -196,6 +199,42 @@ class MQTTService {
     const message = enabled ? 'ON' : 'OFF';
     this.client.publish(MQTT_TOPIC_GARAGE_BEDROOM_LIGHT, message, { qos: 1 });
     console.log(`Published bedroom light control message: ${message}`);
+  }
+
+  // Function to publish garage door LED control message (pin 2)
+  publishGarageDoorLedControl(enabled: boolean): void {
+    if (!this.client || !this.isConnected) {
+      console.warn('Cannot publish: MQTT client not connected');
+      return;
+    }
+    
+    const message = enabled ? 'ON' : 'OFF';
+    this.client.publish(MQTT_TOPIC_GARAGE_DOOR_LED, message, { qos: 1 });
+    console.log(`Published garage door LED control message: ${message}`);
+  }
+
+  // Function to publish main door LED control message (pin 14)
+  publishMainDoorLedControl(enabled: boolean): void {
+    if (!this.client || !this.isConnected) {
+      console.warn('Cannot publish: MQTT client not connected');
+      return;
+    }
+    
+    const message = enabled ? 'ON' : 'OFF';
+    this.client.publish(MQTT_TOPIC_MAIN_DOOR_LED, message, { qos: 1 });
+    console.log(`Published main door LED control message: ${message}`);
+  }
+
+  // Function to publish garage light control message
+  publishGarageLightControl(enabled: boolean): void {
+    if (!this.client || !this.isConnected) {
+      console.warn('Cannot publish: MQTT client not connected');
+      return;
+    }
+    
+    const message = enabled ? 'ON' : 'OFF';
+    this.client.publish(MQTT_TOPIC_GARAGE_LIGHT, message, { qos: 1 });
+    console.log(`Published garage light control message: ${message}`);
   }
 
   // Function to publish HC-SR04 sensor control message

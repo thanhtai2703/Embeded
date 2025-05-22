@@ -967,7 +967,7 @@ void openDoor() {
   doorCloseTime = millis();
 
   // Move servo to open position (90 degrees)
-  doorServo.write(90);
+  doorServo.write(60);
 
   // Display door open message
   display.clearDisplay();
@@ -1029,7 +1029,7 @@ void readUltrasonicSensor() {
 // Function to handle security system
 void handleSecuritySystem() {
   // Define the distance threshold for person detection (adjust as needed)
-  const float PERSON_DISTANCE_THRESHOLD = 100.0; // cm
+  const float PERSON_DISTANCE_THRESHOLD = 20.0; // cm
   
   // Check if a person is detected (distance less than threshold)
   if (distance < PERSON_DISTANCE_THRESHOLD) {
