@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import mqttService from "../services/MQTTService";
+import notificationService from "../services/NotificationService";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/AppNavigator";
@@ -238,10 +239,21 @@ const HomeMenu: React.FC = () => {
 
           // Handle gas alert data
           if (message.gas_level !== undefined) {
+            const gasAlertStatus = message.gas_alert || "NORMAL";
+            
+            // Show push notification when gas level reaches danger level
+            if (gasAlertStatus === "DANGER" && sensorData.gasAlertStatus !== "DANGER") {
+              notificationService.danger(
+                "Gas Level Alert",
+                "Dangerous gas level detected! Please check your environment and ensure proper ventilation.",
+                { icon: "warning", duration: 10000 } // Longer duration (10 seconds) for critical safety alert
+              );
+            }
+            
             setSensorData((prev) => ({
               ...prev,
               gasLevel: message.gas_level,
-              gasAlertStatus: message.gas_alert || "NORMAL",
+              gasAlertStatus: gasAlertStatus,
               isLoading: false,
             }));
           }

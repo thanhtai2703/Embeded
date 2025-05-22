@@ -22,6 +22,7 @@
     "react-native-screens": "^4.10.0",
     "react-native-svg": "^15.12.0",
     "react-native-url-polyfill": "^2.0.0",
+    "rxjs": "^7.8.2",
     "victory-core": "^37.3.6",
     "victory-native": "^41.17.1"
   },

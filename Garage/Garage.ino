@@ -25,7 +25,7 @@
 #define GARAGE_LIGHT_PIN 25    // LED pin for garage light
 
 // Constants
-#define DISTANCE_THRESHOLD 30  // Distance threshold in cm to trigger door opening
+#define DISTANCE_THRESHOLD 10  // Distance threshold in cm to trigger door opening
 #define DOOR_OPEN_ANGLE 90     // Angle for open door position
 #define DOOR_CLOSED_ANGLE 0    // Angle for closed door position
 #define DOOR_OPEN_TIME 5000    // Time to keep door open in milliseconds (minimum time)
