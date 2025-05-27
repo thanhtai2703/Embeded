@@ -28,12 +28,12 @@
 #define DISTANCE_THRESHOLD 10  // Distance threshold in cm to trigger door opening
 #define DOOR_OPEN_ANGLE 90     // Angle for open door position
 #define DOOR_CLOSED_ANGLE 0    // Angle for closed door position
-#define DOOR_OPEN_TIME 5000    // Time to keep door open in milliseconds (minimum time)
-#define LIGHT_THRESHOLD 3000   // Threshold for light sensor (adjust as needed)
+#define DOOR_OPEN_TIME 5000    // Time to keep door open in milliseconds
+#define LIGHT_THRESHOLD 3000   // Threshold for light sensor
 
 // WiFi credentials
-const char* ssid = "ttt";         // Replace with your WiFi SSID
-const char* password = "thanhtai111"; // Replace with your WiFi password
+const char* ssid = "ttt";        
+const char* password = "thanhtai111"; //wifi password
 
 // MQTT Broker settings
 const char* mqtt_broker = "b5619a98.ala.asia-southeast1.emqxsl.com";  // EMQX Cloud broker address

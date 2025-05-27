@@ -1,35 +1,37 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 interface GasMonitorProps {
   gasLevel: number;
   gasAlertStatus: string;
 }
-
-const GasMonitor: React.FC<GasMonitorProps> = ({ gasLevel, gasAlertStatus }) => {
+const GasMonitor: React.FC<GasMonitorProps> = ({
+  gasLevel,
+  gasAlertStatus,
+}) => {
   // Determine the status color and icon based on the gas alert status
   const getStatusColor = () => {
     switch (gasAlertStatus) {
-      case 'DANGER':
-        return '#FF3B30'; // Red for danger
-      case 'WARNING':
-        return '#FFCC00'; // Yellow for warning
-      case 'NORMAL':
+      case "DANGER":
+        return "#FF3B30"; // Red for danger
+      case "WARNING":
+        return "#FFCC00"; // Yellow for warning
+      case "NORMAL":
       default:
-        return '#4CD964'; // Green for normal
+        return "#4CD964"; // Green for normal
     }
   };
 
   const getStatusIcon = () => {
     switch (gasAlertStatus) {
-      case 'DANGER':
-        return 'warning';
-      case 'WARNING':
-        return 'alert-circle';
-      case 'NORMAL':
+      case "DANGER":
+        return "warning";
+      case "WARNING":
+        return "alert-circle";
+      case "NORMAL":
       default:
-        return 'checkmark-circle';
+        return "checkmark-circle";
     }
   };
 
@@ -52,10 +54,10 @@ const GasMonitor: React.FC<GasMonitorProps> = ({ gasLevel, gasAlertStatus }) => 
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 15,
     borderRadius: 15,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -66,31 +68,31 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   statusIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 8,
     borderRadius: 8,
     marginBottom: 10,
   },
   statusText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: "white",
+    fontWeight: "bold",
     marginLeft: 8,
     fontSize: 16,
   },
   detailsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   gasLevelLabel: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
   },
   gasLevelValue: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
 });
 

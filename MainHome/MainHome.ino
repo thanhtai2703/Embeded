@@ -13,8 +13,8 @@
 // Pin definitions
 #define DHT_PIN 4              // DHT11 data pin
 #define DHT_TYPE DHT11         // DHT sensor type
-#define OLED_RESET -1          // Reset pin (or -1 if sharing Arduino reset pin)
-#define I2C_ADDRESS 0x3C       // I2C address for the OLED display (typical: 0x3C)
+#define OLED_RESET -1          // Reset pin
+#define I2C_ADDRESS 0x3C       // I2C address for the OLED display
 #define SERVO_PIN 15           // Servo motor control pin
 #define MQ135_PIN 34           // MQ135 gas sensor analog pin
 #define BUZZER_PIN 5           // Buzzer pin for gas leak alert
@@ -33,8 +33,8 @@ const char* password = "thanhtai111"; // Replace with your WiFi password
 // MQTT Broker settings
 const char* mqtt_broker = "b5619a98.ala.asia-southeast1.emqxsl.com";  // EMQX Cloud broker address
 const int mqtt_port = 8883;  // MQTT over TLS/SSL port
-const char* mqtt_username = "thanhtai";              // Replace if your broker requires authentication
-const char* mqtt_password = "thanhtai";              // Replace if your broker requires authentication
+const char* mqtt_username = "thanhtai";              
+const char* mqtt_password = "thanhtai";          
 const char* client_id = "esp32_smart_home"; // MQTT client ID
 
 // Root CA Certificate for TLS/SSL connection
@@ -68,13 +68,13 @@ const char* temp_topic = "sensors/temperature/room1";
 const char* humidity_topic = "sensors/humidity/room1";
 const char* gas_topic = "sensors/gas/room1";
 const char* light_topic = "sensors/light/room1";
-const char* security_topic = "sensors/security/room1"; // New topic for security status
+const char* security_topic = "sensors/security/room1"; 
 // Combined topic for all sensor data
 const char* sensors_topic = "sensors/all/room1";
 // Control topics
-const char* security_control_topic = "control/security/room1"; // Topic for receiving security control commands
-const char* password_control_topic = "control/password/room1"; // Topic for receiving password change commands
-const char* door_control_topic = "control/door/mainhome"; // Topic for receiving door control commands
+const char* security_control_topic = "control/security/room1"; 
+const char* password_control_topic = "control/password/room1"; 
+const char* door_control_topic = "control/door/mainhome";
 
 // Keypad configuration
 #define ROW_NUM 4              // 4 rows
