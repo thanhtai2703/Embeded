@@ -224,10 +224,11 @@ const HomeMenu: React.FC = () => {
             // Check the location to determine if we should update the display
             const location = message.location || "";
             const locationLower = location.toLowerCase();
-            
-            // Update if the message is from MainHome or if location is not specified
-            // The topic MQTT_TOPIC_COMBINED ('sensors/all/room1') is from MainHome
-            if (locationLower === "mainhome" || !message.location || locationLower === "") {
+            if (
+              locationLower === "mainhome" ||
+              !message.location ||
+              locationLower === ""
+            ) {
               setSensorData((prev) => ({
                 ...prev,
                 temperature: `${message.temperature.toFixed(1)} °C`,
@@ -240,16 +241,17 @@ const HomeMenu: React.FC = () => {
           // Handle gas alert data
           if (message.gas_level !== undefined) {
             const gasAlertStatus = message.gas_alert || "NORMAL";
-            
-            // Show push notification when gas level reaches danger level
-            if (gasAlertStatus === "DANGER" && sensorData.gasAlertStatus !== "DANGER") {
+            if (
+              gasAlertStatus === "DANGER" &&
+              sensorData.gasAlertStatus !== "DANGER"
+            ) {
               notificationService.danger(
                 "Gas Level Alert",
                 "Dangerous gas level detected! Please check your environment and ensure proper ventilation.",
-                { icon: "warning", duration: 10000 } // Longer duration (10 seconds) for critical safety alert
+                { icon: "warning", duration: 10000 }
               );
             }
-            
+
             setSensorData((prev) => ({
               ...prev,
               gasLevel: message.gas_level,
@@ -331,10 +333,12 @@ const HomeMenu: React.FC = () => {
                   // Open the garage door via MQTT
                   if (sensorData.isConnected) {
                     mqttService.publishGarageDoorControl(true);
-                    // Show a temporary message that door is opening
                     Alert.alert("Garage Door", "Opening the garage door...");
                   } else {
-                    Alert.alert("Connection Error", "Cannot open garage door: Not connected to the smart home system.");
+                    Alert.alert(
+                      "Connection Error",
+                      "Cannot open garage door: Not connected to the smart home system."
+                    );
                   }
                 }}
               >
@@ -349,10 +353,15 @@ const HomeMenu: React.FC = () => {
                       // Open the garage door via MQTT
                       if (sensorData.isConnected) {
                         mqttService.publishGarageDoorControl(true);
-                        // Show a temporary message that door is opening
-                        Alert.alert("Garage Door", "Opening the garage door...");
+                        Alert.alert(
+                          "Garage Door",
+                          "Opening the garage door..."
+                        );
                       } else {
-                        Alert.alert("Connection Error", "Cannot open garage door: Not connected to the smart home system.");
+                        Alert.alert(
+                          "Connection Error",
+                          "Cannot open garage door: Not connected to the smart home system."
+                        );
                       }
                     }}
                   >
@@ -364,10 +373,15 @@ const HomeMenu: React.FC = () => {
                       // Close the garage door via MQTT
                       if (sensorData.isConnected) {
                         mqttService.publishGarageDoorControl(false);
-                        // Show a temporary message that door is closing
-                        Alert.alert("Garage Door", "Closing the garage door...");
+                        Alert.alert(
+                          "Garage Door",
+                          "Closing the garage door..."
+                        );
                       } else {
-                        Alert.alert("Connection Error", "Cannot close garage door: Not connected to the smart home system.");
+                        Alert.alert(
+                          "Connection Error",
+                          "Cannot close garage door: Not connected to the smart home system."
+                        );
                       }
                     }}
                   >
@@ -381,10 +395,12 @@ const HomeMenu: React.FC = () => {
                   // Open the main door via MQTT
                   if (sensorData.isConnected) {
                     mqttService.publishMainHomeDoorControl(true);
-                    // Show a temporary message that door is opening
                     Alert.alert("Main Door", "Opening the door...");
                   } else {
-                    Alert.alert("Connection Error", "Cannot open door: Not connected to the smart home system.");
+                    Alert.alert(
+                      "Connection Error",
+                      "Cannot open door: Not connected to the smart home system."
+                    );
                   }
                 }}
               >
@@ -402,7 +418,10 @@ const HomeMenu: React.FC = () => {
                         // Show a temporary message that door is opening
                         Alert.alert("Main Door", "Opening the door...");
                       } else {
-                        Alert.alert("Connection Error", "Cannot open door: Not connected to the smart home system.");
+                        Alert.alert(
+                          "Connection Error",
+                          "Cannot open door: Not connected to the smart home system."
+                        );
                       }
                     }}
                   >
@@ -414,10 +433,12 @@ const HomeMenu: React.FC = () => {
                       // Close the main door via MQTT
                       if (sensorData.isConnected) {
                         mqttService.publishMainHomeDoorControl(false);
-                        // Show a temporary message that door is closing
                         Alert.alert("Main Door", "Closing the door...");
                       } else {
-                        Alert.alert("Connection Error", "Cannot close door: Not connected to the smart home system.");
+                        Alert.alert(
+                          "Connection Error",
+                          "Cannot close door: Not connected to the smart home system."
+                        );
                       }
                     }}
                   >
@@ -445,7 +466,7 @@ const HomeMenu: React.FC = () => {
                 showArrow={true}
                 onPress={handlePasswordPress}
               />
-              
+
               <DeviceRow
                 name="Garage Settings"
                 icon="car"

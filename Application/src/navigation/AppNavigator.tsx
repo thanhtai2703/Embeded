@@ -1,13 +1,13 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import HomeMenu from '../components/HomeMenu';
-import TemperatureDetails from '../screens/TemperatureDetails';
-import HumidityDetails from '../screens/HumidityDetails';
-import LightsScreen from '../screens/LightsScreen';
-import SecurityScreen from '../screens/SecurityScreen';
-import PasswordScreen from '../screens/PasswordScreen';
-import GarageSettingsScreen from '../screens/GarageSettingsScreen';
+import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import HomeMenu from "../components/HomeMenu";
+import TemperatureDetails from "../screens/TemperatureDetails";
+import HumidityDetails from "../screens/HumidityDetails";
+import LightsScreen from "../screens/LightsScreen";
+import SecurityScreen from "../screens/SecurityScreen";
+import PasswordScreen from "../screens/PasswordScreen";
+import GarageSettingsScreen from "../screens/GarageSettingsScreen";
 
 export type RootStackParamList = {
   Home: undefined;
@@ -31,7 +31,10 @@ const AppNavigator = () => {
         }}
       >
         <Stack.Screen name="Home" component={HomeMenu} />
-        <Stack.Screen name="TemperatureDetails" component={TemperatureDetails} />
+        <Stack.Screen
+          name="TemperatureDetails"
+          component={TemperatureDetails}
+        />
         <Stack.Screen name="HumidityDetails" component={HumidityDetails} />
         <Stack.Screen name="Lights" component={LightsScreen} />
         <Stack.Screen name="Security" component={SecurityScreen} />

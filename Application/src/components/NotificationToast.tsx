@@ -1,32 +1,44 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import notificationService, { NotificationData } from '../services/NotificationService';
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  TouchableOpacity,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import notificationService, {
+  NotificationData,
+} from "../services/NotificationService";
 
 const NotificationToast: React.FC = () => {
-  const [notification, setNotification] = useState<NotificationData | null>(null);
+  const [notification, setNotification] = useState<NotificationData | null>(
+    null
+  );
   const [visible, setVisible] = useState(false);
   const fadeAnim = useState(new Animated.Value(0))[0];
 
   useEffect(() => {
     // Subscribe to notifications
-    const subscription = notificationService.notifications$.subscribe((data) => {
-      if (data.id.startsWith('dismiss_')) {
-        // Handle dismiss notification
-        hideNotification();
-      } else {
-        // Show new notification
-        setNotification(data);
-        showNotification();
-
-        // Auto-hide after duration
-        const timer = setTimeout(() => {
+    const subscription = notificationService.notifications$.subscribe(
+      (data) => {
+        if (data.id.startsWith("dismiss_")) {
+          // Handle dismiss notification
           hideNotification();
-        }, data.duration || 5000);
+        } else {
+          // Show new notification
+          setNotification(data);
+          showNotification();
 
-        return () => clearTimeout(timer);
+          // Auto-hide after duration
+          const timer = setTimeout(() => {
+            hideNotification();
+          }, data.duration || 5000);
+
+          return () => clearTimeout(timer);
+        }
       }
-    });
+    );
 
     return () => {
       subscription.unsubscribe();
@@ -60,15 +72,15 @@ const NotificationToast: React.FC = () => {
   // Determine background color based on notification type
   const getBackgroundColor = () => {
     switch (notification.type) {
-      case 'success':
-        return '#4CD964'; // Green
-      case 'warning':
-        return '#FFCC00'; // Yellow
-      case 'danger':
-        return '#FF3B30'; // Red
-      case 'info':
+      case "success":
+        return "#4CD964"; // Green
+      case "warning":
+        return "#FFCC00"; // Yellow
+      case "danger":
+        return "#FF3B30"; // Red
+      case "info":
       default:
-        return '#007AFF'; // Blue
+        return "#007AFF"; // Blue
     }
   };
 
@@ -82,7 +94,7 @@ const NotificationToast: React.FC = () => {
       <View style={styles.content}>
         <View style={styles.iconContainer}>
           <Ionicons
-            name={notification.icon || 'information-circle'}
+            name={notification.icon || "information-circle"}
             size={24}
             color="white"
           />
@@ -101,12 +113,12 @@ const NotificationToast: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
+    position: "absolute",
     top: 50,
     left: 20,
     right: 20,
     borderRadius: 10,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -117,9 +129,9 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   content: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 15,
-    alignItems: 'center',
+    alignItems: "center",
   },
   iconContainer: {
     marginRight: 10,
@@ -128,12 +140,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: "white",
+    fontWeight: "bold",
     fontSize: 16,
   },
   message: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
     marginTop: 2,
   },

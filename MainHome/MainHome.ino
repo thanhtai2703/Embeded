@@ -1,14 +1,14 @@
-#include <Wire.h>              // For I2C communication
-#include <Adafruit_GFX.h>      // Graphics library
-#include <Adafruit_SH110X.h>   // SH1106 OLED display library
-#include <DHT.h>               // DHT sensor library
-#include <Keypad.h>            // Keypad library
-#include <ESP32Servo.h>        // Servo library for ESP32
-#include <WiFi.h>              // WiFi library
-#include <PubSubClient.h>      // MQTT library
-#include <WiFiClientSecure.h>  // For secure WiFi connection
-#include <ArduinoJson.h>       // JSON library for formatting data
-#include <Preferences.h>       // Preferences library for persistent storage
+#include <Wire.h>              
+#include <Adafruit_GFX.h>     
+#include <Adafruit_SH110X.h>   
+#include <DHT.h>               
+#include <Keypad.h>           
+#include <ESP32Servo.h>       
+#include <WiFi.h>             
+#include <PubSubClient.h>      
+#include <WiFiClientSecure.h> 
+#include <ArduinoJson.h>       
+#include <Preferences.h>       
 
 // Pin definitions
 #define DHT_PIN 4              // DHT11 data pin
@@ -22,13 +22,13 @@
 #define LED_PIN 2              // LED pin for night light
 
 // Security system pins
-#define SECURITY_BUZZER_PIN 19 // Additional buzzer for security alert
+#define SECURITY_BUZZER_PIN 19 // buzzer for security alert
 #define TRIG_PIN 17            // HC-SR04 trigger pin
 #define ECHO_PIN 18            // HC-SR04 echo pin
 
 // WiFi credentials
-const char* ssid = "ttt";         // Replace with your WiFi SSID
-const char* password = "thanhtai111"; // Replace with your WiFi password
+const char* ssid = "ttt";      
+const char* password = "thanhtai111"; 
 
 // MQTT Broker settings
 const char* mqtt_broker = "b5619a98.ala.asia-southeast1.emqxsl.com";  // EMQX Cloud broker address
@@ -67,9 +67,6 @@ CAUw7C29C79Fv1C5qfPrmAESrciIxpg0X40KPMbp1ZWVbd4=
 const char* temp_topic = "sensors/temperature/room1";
 const char* humidity_topic = "sensors/humidity/room1";
 const char* gas_topic = "sensors/gas/room1";
-const char* light_topic = "sensors/light/room1";
-const char* security_topic = "sensors/security/room1"; 
-// Combined topic for all sensor data
 const char* sensors_topic = "sensors/all/room1";
 // Control topics
 const char* security_control_topic = "control/security/room1"; 
@@ -88,27 +85,18 @@ char keys[ROW_NUM][COL_NUM] = {
   {'*','0','#','D'}
 };
 
-// Connect keypad ROW0, ROW1, ROW2 and ROW3 to these Arduino pins
 byte rowPins[ROW_NUM] = {32, 33, 25, 26}; // Connect to the row pinouts of the keypad
-// Connect keypad COL0, COL1, COL2 and COL3 to these Arduino pins
 byte colPins[COL_NUM] = {27, 14, 12, 13}; // Connect to the column pinouts of the keypad
 
-// Initialize the OLED display
 Adafruit_SH1106G display = Adafruit_SH1106G(128, 64, &Wire, OLED_RESET);
 
-// Initialize the DHT sensor
 DHT dht(DHT_PIN, DHT_TYPE);
 
-// Initialize the keypad
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROW_NUM, COL_NUM);
-
-// Initialize the servo
 Servo doorServo;
 
 // Initialize WiFi client with SSL/TLS support
 WiFiClientSecure espClient;
-
-// Initialize MQTT client
 PubSubClient mqtt_client(espClient);
 
 // Variables to store sensor readings
@@ -138,28 +126,26 @@ const unsigned long PERSON_DETECTION_THRESHOLD = 5000; // 5 seconds threshold fo
 #define GAS_DANGER_THRESHOLD 1500   // Higher threshold for danger alarm
 
 // Light sensor threshold for LED control
-#define LIGHT_THRESHOLD 3000    // Threshold for MH-series sensor (adjust as needed)
+#define LIGHT_THRESHOLD 3000 
 
 // Password variables
-char correctPassword[5] = "1234"; // 4-digit password + null terminator (changed from const to allow updates)
+char correctPassword[5] = "1234";
 char enteredPassword[5] = "";           // Buffer to store entered password
 int passwordIndex = 0;                  // Current position in password entry
 bool doorOpen = false;                  // Door state
 bool passwordChanged = false;           // Flag to indicate password was changed
 
-// Preferences instance for persistent storage
 Preferences preferences;
 
 // Timing variables
 unsigned long lastUpdateTime = 0;
-const unsigned long updateInterval = 2000; // Update every 2 seconds
+const unsigned long updateInterval = 2000; 
 unsigned long doorCloseTime = 0;
-const unsigned long doorOpenDuration = 5000; // Door stays open for 5 seconds
+const unsigned long doorOpenDuration = 5000; 
 
 // MQTT timing variables
 unsigned long lastPublishTime = 0;
-const unsigned long publishInterval = 2000; // Publish to MQTT every 2 seconds
-
+const unsigned long publishInterval = 2000;
 // WiFi connection status
 bool wifiConnected = false;
 bool mqttConnected = false;
@@ -233,7 +219,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
   for (unsigned int i = 0; i < length; i++) {
     message[i] = (char)payload[i];
   }
-  message[length] = '\0'; // Null-terminate the string
+  message[length] = '\0';
   
   Serial.println(message);
   
@@ -715,7 +701,7 @@ void readGasSensor() {
   }
 }
 
-// Function to handle gas leak with different alarm patterns based on concentration
+// Function to handle gas leak
 void handleGasLeak() {
   static unsigned long lastBuzzerToggle = 0;
   static bool buzzerState = false;
@@ -726,12 +712,12 @@ void handleGasLeak() {
   if (previousAlertLevel != gasAlertLevel) {
     // Handle state transitions
     if (gasAlertLevel == DANGER) {
-      // When entering DANGER state, turn buzzer on continuously
+      // When entering DANGER state
       digitalWrite(BUZZER_PIN, LOW); // Turn buzzer ON
       buzzerState = true;
       Serial.println("DANGER: Continuous alarm activated!");
     } else if (gasAlertLevel == NORMAL) {
-      // When returning to NORMAL state, ensure buzzer is turned off
+      // When returning to NORMAL state
       digitalWrite(BUZZER_PIN, HIGH); // Turn buzzer OFF
       buzzerState = false;
       Serial.println("Gas level normal: Alarm deactivated");
@@ -742,13 +728,9 @@ void handleGasLeak() {
   // Handle different alarm patterns based on gas alert level
   switch (gasAlertLevel) {
     case DANGER:
-      // Critical level - continuous buzzer (always ON)
-      // Buzzer is already turned ON when entering this state
-      // No need to toggle, keep it ON continuously
       break;
 
     case WARNING:
-      // Warning level - slower beeping (500ms intervals)
       if (currentMillis - lastBuzzerToggle >= 500) {
         lastBuzzerToggle = currentMillis;
         buzzerState = !buzzerState;
@@ -758,8 +740,6 @@ void handleGasLeak() {
 
     case NORMAL:
     default:
-      // No gas leak detected - ensure buzzer is off
-      // Always force the buzzer off in normal state regardless of previous state
       digitalWrite(BUZZER_PIN, HIGH);
       buzzerState = false;
       break;
@@ -768,8 +748,6 @@ void handleGasLeak() {
 
 // Function to read light sensor value
 void readLightSensor() {
-  // Read the analog value from MH-series light sensor
-  // MH-series sensors typically output lower values in brighter light
   lightValue = analogRead(LIGHT_SENSOR_PIN);
   Serial.print("Light sensor value (MH-series): ");
   Serial.println(lightValue);
@@ -777,8 +755,6 @@ void readLightSensor() {
 
 // Function to handle LED control based on light level
 void handleLightControl() {
-  // MH-series sensors typically output higher values in darkness
-  // and lower values in bright light (inverted compared to some LDRs)
   if (lightValue > LIGHT_THRESHOLD) {
     if (!ledOn) {
       digitalWrite(LED_PIN, HIGH);
@@ -827,15 +803,6 @@ void updateDisplay() {
   display.print("Gas Level:");
   display.setCursor(70, 32);
   display.print(gasValue);
-
-  // Display light level and night light status
-  // display.setCursor(0, 42);
-  // display.setTextSize(1);
-  // display.print("Light:");
-  // display.setCursor(70, 42);
-  // display.print(lightValue);
-  // display.print(" ");
-  // display.print(ledOn ? "LED:ON" : "LED:OFF");
 
   // Display gas status with different warning levels
   display.setCursor(0, 42);
@@ -932,7 +899,6 @@ void displayPasswordError() {
 
 // Function to change the door password
 void changePassword(const char* newPassword) {
-  // Validate new password (must be 4 digits)
   if (strlen(newPassword) != 4) {
     Serial.println("Password change failed: New password must be 4 digits");
     return;
@@ -1010,8 +976,6 @@ void readUltrasonicSensor() {
   digitalWrite(TRIG_PIN, LOW);
   
   // Read the echo pin, convert the time to distance in cm
-  // Sound travels at approximately 343 meters per second (or 0.0343 cm/microsecond)
-  // The pulse travels to the object and back, so we divide by 2
   long duration = pulseIn(ECHO_PIN, HIGH);
   distance = duration * 0.0343 / 2;
   
