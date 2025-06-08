@@ -17,12 +17,12 @@
 #define DHT_TYPE DHT11         // DHT sensor type
 #define OLED_RESET -1          // Reset pin
 #define I2C_ADDRESS 0x3C       // I2C address
-#define LIGHT_SENSOR_PIN 35    // MH-series light sensor analog pin
-#define LED_PIN 2              // LED pin for night light
-#define LED_PIN2 14            // Second LED pin for night light
-#define LIVING_ROOM_LED_PIN 32 // LED pin for living room light
-#define BEDROOM_LED_PIN 33     // LED pin for bedroom light
-#define GARAGE_LIGHT_PIN 25    // LED pin for garage light
+#define LIGHT_SENSOR_PIN 35    // MH-series
+#define LED_PIN 2              // LED pin for Main door 
+#define LED_PIN2 14            // Second LED pin for garage door
+#define LIVING_ROOM_LED_PIN 32 // LED pin for living room 
+#define BEDROOM_LED_PIN 33     // LED pin for bedroom 
+#define GARAGE_LIGHT_PIN 25    // LED pin for garage 
 
 #define DISTANCE_THRESHOLD 10  
 #define DOOR_OPEN_ANGLE 90     

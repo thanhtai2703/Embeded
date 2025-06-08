@@ -255,9 +255,6 @@ class EMQXToInfluxDB:
             return []
 
     def start_api_server(self, host='0.0.0.0', port=5000):
-        """
-        Start a Flask API server to serve historical data
-        """
         app.run(host=host, port=port)
 
 # Flask routes
